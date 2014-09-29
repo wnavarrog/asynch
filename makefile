@@ -22,14 +22,14 @@ OPTFLAGS = -O3 -march=nocona
 #ALLTAUFLAGS = $(CFLAGS) $(TAULIBS) $(LDFLAGS) -tau_makefile=~/tau-2.21.4/x86_64/lib/Makefile.tau-mpi -optCompInst
 
 #Header and library locations
-HEADLOC = -I/Users/ssma/metis/include/
-LIBSLOC = -L/Users/ssma/metis/lib/
+#HEADLOC = -I/Users/ssma/metis/include/
+#LIBSLOC = -L/Users/ssma/metis/lib/
 
 #Libraries
 #LIBS = -lm -lpq -L/usr/lib64/atlas/
 #LIBS = -lm -lpq -L/usr/lib64/atlas/ -llapack -lf77blas -lcblas -latlas
 #LIBS = -lm -lpq
-LIBS = $(LIBSLOC) -lm -lpq -lmetis
+LIBS = $(LIBSLOC) -lm -lpq #-lmetis
 
 #Objects
 SHAREDOBJS = rkmethods.o problems.o mathmethods.o riversys.o sort.o comm.o system.o processdata.o partition.o definetype.o misc.o \
