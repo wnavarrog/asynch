@@ -1,0 +1,9 @@
+dbname=model_ifc host=s-iihr51.iihr.uiowa.edu port=5432 user=automated_solver password=C5.pfest0
+
+2
+
+SELECT link_id,up_area,length,area from env_master_km WHERE link_id < 620174 AND link_id > 1 ORDER BY link_id;
+
+SELECT nodeX.link_id,nodeX.up_area,nodeX.length,nodeX.area FROM env_master_km AS nodeX, env_master_km AS parentX 
+	WHERE (nodeX.left BETWEEN parentX.left AND parentX.right) AND parentX.link_id = %u ORDER BY link_id;
+
