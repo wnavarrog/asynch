@@ -9,4 +9,5 @@ WITH subbasin AS (SELECT nodeX.link_id FROM env_master_km AS nodeX, env_master_k
 				SELECT unix_time,rain_intens,L.link_id FROM link_rain5 L, subbasin R 
 				WHERE unix_time >= %u AND unix_time < %u AND L.link_id = R.link_id ORDER BY unix_time;
 
-SELECT rain FROM master_st4 LIMIT 1;
+SELECT unix_timestamp FROM master_st4 LIMIT 1;
+

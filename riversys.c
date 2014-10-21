@@ -481,7 +481,7 @@ Link** Create_River_System_parallel(char rk_filename[],unsigned int* N,unsigned 
 
 		if(GlobalVars->rvr_flag == 0 && GlobalVars->prm_flag == 0 && id != system[i]->ID)
 		{
-			printf("Error: Links must be listed in the same order in every data file %u %u\n",id,system[i]->ID);
+			printf("Error: Links must be listed in the same order in every data file %u %u %u\n",id,system[i]->ID,i);
 			*N=0;
 			return NULL;
 		}
@@ -1736,26 +1736,21 @@ getchar();
 
 	for(j=0;j<*save_size;j++)
 	{
-		k = *N/2;
-		max = *N;
-		min = 0;
-		while((*id_to_loc)[k][0] != (*save_list)[j])
-		{
-			if(max == min || max == min+1)
-			{
-				k = *N+1;
-				break;
-			}
-			if((*id_to_loc)[k][0] < (*save_list)[j])	min = k;
-			else						max = k;
-			k = (max+min)/2;
-		}
+		k = find_link_by_idtoloc((*save_list)[j],*id_to_loc,*N);
 
 		if(k == *N+1)
 		{
-			//Move end of save list to spot k, and decrement save_size
-			(*save_list)[j] = (*save_list)[--(*save_size)];
+			if(my_rank == 0)
+				printf("[%i]: Warning: Time series output for requested for a link NOT in the network (link id = %u).\n",my_rank,(*save_list)[j]);
+
+			//Shift ids in save list to spot k, and decrement save_size
+			for(k=j+1;k<*save_size;k++)
+				(*save_list)[k-1] = (*save_list)[k];
 			j--;
+			(*save_size)--;
+
+			//(*save_list)[j] = (*save_list)[--(*save_size)];
+			//j--;
 		}
 		else if((*assignments)[(*id_to_loc)[k][1]] == my_rank)
 		{
@@ -1778,50 +1773,31 @@ getchar();
 	unsigned int* peaksave_list;
 	if(GlobalVars->peaks_loc_flag)
 	{
-/*
-		if(GlobalVars->peaksave_flag == 3)	//!!!! Should be in Create_SAV_Data !!!!
-		{
-			*peaksave_size = *N;
-			peaksave_list = NULL;
-			for(j=0;j<*my_N;j++)
-				system[(*my_sys)[j]]->peak_flag = 1;
-		}
-		else
-*/
-		{
-			peaksave_list = Create_SAV_Data(GlobalVars->peaksave_filename,system,*N,peaksave_size,db_connections[ASYNCH_DB_LOC_PEAKSAVE],GlobalVars->peaksave_flag);
+		peaksave_list = Create_SAV_Data(GlobalVars->peaksave_filename,system,*N,peaksave_size,db_connections[ASYNCH_DB_LOC_PEAKSAVE],GlobalVars->peaksave_flag);
 
+		for(j=0;j<*peaksave_size;j++)		//!!!! Can we loop over my_peaksave_size? !!!!
+		{
+			k = find_link_by_idtoloc(peaksave_list[j],*id_to_loc,*N);
 
-			for(j=0;j<*peaksave_size;j++)		//!!!! Can we loop over my_peaksave_size? !!!!
+			if(k == *N+1)
 			{
-				k = *N/2;
-				max = *N;
-				min = 0;
-				while((*id_to_loc)[k][0] != peaksave_list[j])
-				{
-					if(max == min || max == min+1)
-					{
-						k = *N+1;
-						break;
-					}
-					if((*id_to_loc)[k][0] < peaksave_list[j])	min = k;
-					else						max = k;
-					k = (max+min)/2;
-				}
+				if(my_rank == 0)
+					printf("[%i]: Warning: Peakflow output for requested for a link NOT in the network (link id = %u).\n",my_rank,(peaksave_list)[j]);
 
+				//Shift ids in save list to spot k, and decrement save_size
+				for(k=j+1;k<*peaksave_size;k++)
+					peaksave_list[k-1] = peaksave_list[k];
+				j--;
+				(*peaksave_size)--;
 
-				if(k == *N+1)
-				{
-					//Move end of save list to spot k, and decrement save_size
-					peaksave_list[j] = peaksave_list[--(*peaksave_size)];
-					j--;
-				}
-				else if((*assignments)[(*id_to_loc)[k][1]] == my_rank)
-				{
-					//my_peaksave_size++;
-					current = system[(*id_to_loc)[k][1]];
-					current->peak_flag = 1;
-				}
+				//peaksave_list[j] = peaksave_list[--(*peaksave_size)];
+				//j--;
+			}
+			else if((*assignments)[(*id_to_loc)[k][1]] == my_rank)
+			{
+				//my_peaksave_size++;
+				current = system[(*id_to_loc)[k][1]];
+				current->peak_flag = 1;
 			}
 		}
 	}

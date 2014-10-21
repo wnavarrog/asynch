@@ -396,7 +396,8 @@ void LinearHillslope_MonthlyEvap(double t,VEC* y_i,VEC** y_p,unsigned short int 
 
 	//Evaporation
 	double C_p,C_a,C_T,Corr_evap;
-	double e_pot = forcing_values[1] * (1e-3/60.0);
+	//double e_pot = forcing_values[1] * (1e-3/60.0);
+	double e_pot = forcing_values[1] * (1e-3/(30.0*24.0*60.0));	//[mm/month] -> [m/min]
 
 	if(e_pot > 0.0)
 	{
