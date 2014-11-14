@@ -49,10 +49,13 @@ typedef struct
 	ConnData* db_connections[ASYNCH_MAX_DB_CONNECTIONS];	//Database connection information
 	Forcing* forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//Forcing connection information
 	data_types* dt_info;
+	model* custom_model;
 } asynchsolver;
 
 //Constructor / Destructor related routings
 asynchsolver* Asynch_Init(MPI_Comm comm);
+int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*),void (*Convert)(VEC*,unsigned int),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int),
+	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int));
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename);
 void Asynch_Load_System(asynchsolver* asynch);
 void Asynch_Free(asynchsolver* asynch);
@@ -93,6 +96,9 @@ void Asynch_Reset_Peakflow_Data(asynchsolver* asynch);
 int Asynch_Set_Forcing_State(asynchsolver* asynch,unsigned int idx,double t_0,unsigned int first_file,unsigned int last_file);
 int Asynch_Set_Temp_Files(asynchsolver* asynch,double set_time,void* set_value,unsigned int output_idx);
 int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time);
+int Asynch_Get_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
+int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
+
 
 //Routines for output
 int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,IVEC*,int,void*),int* used_states,int num_states);

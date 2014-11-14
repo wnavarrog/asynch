@@ -27,6 +27,7 @@ asynchsolver* Asynch_Init(MPI_Comm comm)
 	asynch->my_data = NULL;
 	asynch->peakfile = NULL;
 	asynch->peakfilename = NULL;
+	asynch->custom_model = NULL;
 	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS;i++)	asynch->db_connections[i] = NULL;
 	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START;i++)	asynch->forcings[i] = InitializeForcings();
 
@@ -36,12 +37,34 @@ asynchsolver* Asynch_Init(MPI_Comm comm)
 	return asynch;
 }
 
+//Creates and loads a custom model
+//Return 1 if there is an error, 0 if everything is ok
+int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*),void (*Convert)(VEC*,unsigned int),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int),
+	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int))
+{
+	asynch->custom_model = (model*) malloc(sizeof(model));
+
+	if(!SetParamSizes || !Convert || !Routines || !Precalculations || !InitializeEqs)
+	{
+		if(my_rank == 0)
+			printf("[%i]: Error creating custom model: Some routines to initialize the model are NULL\n",my_rank);
+		return 1;
+	}
+
+	asynch->custom_model->SetParamSizes = SetParamSizes;
+	asynch->custom_model->Convert = Convert;
+	asynch->custom_model->Routines = Routines;
+	asynch->custom_model->Precalculations = Precalculations;
+	asynch->custom_model->InitializeEqs = InitializeEqs;
+	return 0;
+}
+
+
 //Reads a .gbl file.
-//void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename,char* database_info)
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename)
 {
 	//Read in .gbl file
-	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename);
+	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model);
 	if(!asynch->GlobalVars)
 	{
 		printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
@@ -57,7 +80,7 @@ void Asynch_Load_System(asynchsolver* asynch)
 	//Read in remaining data from files
 	asynch->sys = Create_River_System_parallel(asynch->rkdfilename,&(asynch->N),&(asynch->my_sys),&(asynch->my_N),&(asynch->my_max_nodes),&(asynch->my_data),&(asynch->assignments),&(asynch->getting),
 		&(asynch->AllMethods),&(asynch->nummethods),asynch->GlobalVars,asynch->GlobalErrors,&(asynch->save_list),&(asynch->my_save_size),&(asynch->save_size),
-		&(asynch->peaksave_size),&(asynch->id_to_loc),asynch->forcings,asynch->db_connections,&(asynch->workspace));
+		&(asynch->peaksave_size),&(asynch->id_to_loc),asynch->forcings,asynch->db_connections,&(asynch->workspace),asynch->custom_model);
 	if(asynch->sys == NULL)
 	{
 		printf("[%i]: An error occurred setting up the river network. See above messages for details.\n",my_rank);
@@ -110,6 +133,7 @@ void Asynch_Free(asynchsolver* asynch)
 		free(asynch->id_to_loc[i]);
 	free(asynch->id_to_loc);
 	Destroy_UnivVars(asynch->GlobalVars);
+	if(asynch->custom_model)	free(asynch->custom_model);
 
 	free(asynch);
 
@@ -304,6 +328,33 @@ int Asynch_Create_Peakflows_Output(asynchsolver* asynch)
 	if(asynch->GlobalVars->output_data->CreatePeakflowOutput && asynch->GlobalVars->peaksave_flag)
 		return asynch->GlobalVars->output_data->CreatePeakflowOutput(asynch->sys,asynch->GlobalVars,asynch->my_sys,asynch->my_N,asynch->peaksave_size,asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT]);
 	return -1;
+}
+
+//Return 0 means ok, -1 means no peakflows to output
+int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
+{
+	if(asynch->GlobalVars->peaks_loc_filename)
+	{
+		sprintf(asynch->GlobalVars->peaks_loc_filename,peakflowname);
+		return 0;
+	}
+	else
+		return 1;
+}
+
+//Return 0 means ok, -1 means no peakflows to output
+int Asynch_Get_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
+{
+
+printf("I see %s\n",asynch->GlobalVars->peaks_loc_filename);
+
+	if(asynch->GlobalVars->peaks_loc_filename)
+	{
+		sprintf(peakflowname,asynch->GlobalVars->peaks_loc_filename);
+		return 0;
+	}
+	else
+		return 1;
 }
 
 
@@ -621,6 +672,7 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 						if( current->forcing_buff[k]->rainfall[l][0] <= t_0 && t_0 < current->forcing_buff[k]->rainfall[l+1][0] )	break;
 					double rainfall_buffer = current->forcing_buff[k]->rainfall[l][1];
 					current->forcing_values[k] = rainfall_buffer;
+					current->forcing_indices[k] = l;
 
 					//Find and set the new change in rainfall
 					for(j=l+1;j<current->forcing_buff[k]->n_times;j++)
@@ -641,5 +693,8 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 		}
 	}
 }
+
+
+
 
 
