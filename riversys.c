@@ -20,7 +20,7 @@
 //PGconn* conn:	Pointer for an SQL database. Will be NULL if no database is needed.
 //TempStorage** workspace:	Will be set to memory pointers for temporary calculations.
 //Returns an array (sys) of links created by reading in data from the files in the arguments.
-Link** Create_River_System_parallel(char rk_filename[],unsigned int* N,unsigned int** my_sys,unsigned int* my_N,unsigned int* my_max_nodes,TransData** my_data,int** assignments,short int** getting,RKMethod*** AllMethods,unsigned int* nummethods,UnivVars* GlobalVars,ErrorData* GlobalErrors,unsigned int** save_list,unsigned int* my_save_size,unsigned int* save_size,unsigned int* peaksave_size,unsigned int*** id_to_loc,Forcing** forcings,ConnData** db_connections,TempStorage** workspace)
+Link** Create_River_System_parallel(char rk_filename[],unsigned int* N,unsigned int** my_sys,unsigned int* my_N,unsigned int* my_max_nodes,TransData** my_data,int** assignments,short int** getting,RKMethod*** AllMethods,unsigned int* nummethods,UnivVars* GlobalVars,ErrorData* GlobalErrors,unsigned int** save_list,unsigned int* my_save_size,unsigned int* save_size,unsigned int* peaksave_size,unsigned int*** id_to_loc,Forcing** forcings,ConnData** db_connections,TempStorage** workspace,model* custom_model)
 {
 	Link** system;
 	Link *current,*prev;
@@ -500,7 +500,8 @@ Link** Create_River_System_parallel(char rk_filename[],unsigned int* N,unsigned 
 				system[i]->params->ve[j] = db_params[j][i];
 		}
 
-		ConvertParams(system[i]->params,type);
+		if(custom_model)	custom_model->Convert(system[i]->params,type);
+		else	ConvertParams(system[i]->params,type);
 	}
 
 	//Cleanup database connection
@@ -1395,27 +1396,30 @@ getchar();
 			//!!!! This should be done outside this loop !!!!
 
 			//Set solver and ODE
-			InitRoutines(system[i],type,system[i]->method->exp_imp,system[i]->dam);
+			if(custom_model)	custom_model->Routines(system[i],type,system[i]->method->exp_imp,system[i]->dam);
+			else			InitRoutines(system[i],type,system[i]->method->exp_imp,system[i]->dam);
 
 			//Setup the initial stepsize
 			//!!!! This should be removed, but requires changing .rkd file structure !!!!
 			//if(rk_filename[0] != '\0')	fscanf(rkdata,"%lf",&(system[i]->h));
 
 			//Make some precalculations
-			Precalculations(system[i],GlobalVars->global_params,system[i]->params,system[i]->iparams,GlobalVars->disk_params,GlobalVars->params_size,system[i]->dam,type);
+			if(custom_model)	custom_model->Precalculations(system[i],GlobalVars->global_params,system[i]->params,system[i]->iparams,GlobalVars->disk_params,GlobalVars->params_size,system[i]->dam,type);
+			else			Precalculations(system[i],GlobalVars->global_params,system[i]->params,system[i]->iparams,GlobalVars->disk_params,GlobalVars->params_size,system[i]->dam,type);
 
 			//Setup the initial values
 			if(GlobalVars->init_flag == 0)
 			{
 				for(j=GlobalVars->diff_start;j<GlobalVars->no_ini_start;j++)	fscanf(initdata,"%lf",&(y_0->ve[j]));
-				//for(j=GlobalVars->no_ini_start;j<initdim;j++)		fscanf(initdata,"%lf",&trash);	//Trash unneeded data
-				for(j=GlobalVars->no_ini_start;j<dim;j++)		fscanf(initdata,"%*f");	//Trash unneeded data
-				system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
+				//for(j=GlobalVars->no_ini_start;j<dim;j++)		fscanf(initdata,"%*f");	//Trash unneeded data	//!!!! This was uncommented. I don't think it should exist... !!!!
+				if(custom_model)	system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
+				else			system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
 			}
 			else if(GlobalVars->init_flag == 1)
 			{
 				v_copy(uniform_y_0,y_0);
-				system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
+				if(custom_model)	system[i]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
+				else			system[i]->state = ReadInitData(GlobalVars->global_params,system[i]->params,system[i]->iparams,system[i]->qvs,system[i]->dam,y_0,type);
 			}
 			else if(GlobalVars->init_flag == 2)	//Reading a .rec file
 			{
@@ -1650,7 +1654,7 @@ getchar();
 			}
 
 			//if(GlobalVars->init_flag == 0)	for(j=0;j<initdim;j++)	fscanf(initdata,"%lf",&crap1);	//Initial data
-			if(GlobalVars->init_flag == 0)	for(j=GlobalVars->diff_start;j<dim;j++)	fscanf(initdata,"%*f");	//Initial data
+			if(GlobalVars->init_flag == 0)	for(j=GlobalVars->diff_start;j<GlobalVars->no_ini_start;j++)	fscanf(initdata,"%*f");	//Initial data
 			else if(GlobalVars->init_flag == 2)	for(j=0;j<dim;j++)	fscanf(initdata,"%lf",&crap1);
 			system[i]->method = NULL;
 			system[i]->list = NULL;
@@ -1877,7 +1881,7 @@ getchar();
 //PGconn** conn:	NULL pointer that will be set to an SQL database, if needed.
 //char* rkdfilename (set by this method): Will be the filename of the .rkd file, if the error data is not global.
 //Returns a UnivVars that contains all the global data read in from the file globalfilename.
-UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcing** forcings,ConnData** db_connections,char* rkdfilename)
+UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcing** forcings,ConnData** db_connections,char* rkdfilename,model* custom_model)
 {
 	unsigned int i,j,k,total,written;
 	int flag,valsread;
@@ -1942,7 +1946,8 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Set dim and other sizes
-	SetParamSizes(GlobalVars);
+	if(custom_model)	custom_model->SetParamSizes(GlobalVars);
+	else			SetParamSizes(GlobalVars);
 
 	//Find the states needed for printing
 	GlobalVars->print_indices = (unsigned int*) calloc(GlobalVars->dim,sizeof(unsigned int));
