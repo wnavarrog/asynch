@@ -212,6 +212,90 @@ void TopLayerHillslope_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int
 }
 
 
+//Type 254
+//Contains 3 layers on hillslope: ponded, top layer, soil. Also has 3 extra states: total precip, total runoff, base flow
+//Order of parameters: A_i,L_i,A_h,invtau,k_2,k_i,c_1,c_2
+//The numbering is:	0   1   2     3    4   5   6   7
+//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,h_b,S_L,A,B,exponent,v_B
+//The numbering is:        0      1        2     3   4     5        6   7  8 9  10       11
+void TopLayerHillslope_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
+{
+	unsigned short int i;
+
+	double lambda_1 = global_params->ve[1];
+	double k_3 = global_params->ve[4];	//[1/min]
+	double h_b = global_params->ve[6];	//[m]
+	double S_L = global_params->ve[7];	//[m]
+	double A = global_params->ve[8];
+	double B = global_params->ve[9];
+	double exponent = global_params->ve[10];
+	double v_B = global_params->ve[11];
+	double e_pot = forcing_values[1] * (1e-3/(30.0*24.0*60.0));	//[mm/month] -> [m/min]
+
+	double L = params->ve[1];	//[m]
+	double A_h = params->ve[2];	//[m^2]
+	//double h_r = params->ve[3];	//[m]
+	double invtau = params->ve[3];	//[1/min]
+	double k_2 = params->ve[4];	//[1/min]
+	double k_i = params->ve[5];	//[1/min]
+	double c_1 = params->ve[6];
+	double c_2 = params->ve[7];
+
+	double q = y_i->ve[0];		//[m^3/s]
+	double s_p = y_i->ve[1];	//[m]
+	double s_t = y_i->ve[2];	//[m]
+	double s_s = y_i->ve[3];	//[m]
+	//double s_precip = y_i->ve[4];	//[m]
+	//double V_r = y_i->ve[5];	//[m^3]
+	double q_b = y_i->ve[6];	//[m^3/s]
+
+	//Evaporation
+	double e_p,e_t,e_s;
+	double Corr = s_p + s_t / S_L + s_s / (h_b-S_L);
+	if(e_pot > 0.0 && Corr > 1e-12)
+	{
+		e_p = s_p * e_pot / Corr;
+		e_t = s_t/S_L * e_pot / Corr;
+		e_s = s_s/(h_b-S_L) * e_pot / Corr;
+	}
+	else
+	{
+		e_p = 0.0;
+		e_t = 0.0;
+		e_s = 0.0;
+	}
+
+	double pow_term = (1.0-s_t/S_L > 0.0) ? pow(1.0-s_t/S_L,exponent) : 0.0;
+	double k_t = (A + B * pow_term) * k_2;
+
+	//Fluxes
+	double q_pl = k_2 * s_p;
+	double q_pt = k_t * s_p;
+	double q_ts = k_i * s_t;
+	double q_sl = k_3 * s_s;	//[m/min]
+
+	//Discharge
+	ans->ve[0] = -q + (q_pl + q_sl) * c_2;
+	for(i=0;i<numparents;i++)
+		ans->ve[0] += y_p[i]->ve[0];
+	ans->ve[0] = invtau * pow(q,lambda_1) * ans->ve[0];
+
+	//Hillslope
+	ans->ve[1] = forcing_values[0]*c_1 - q_pl - q_pt - e_p;
+	ans->ve[2] = q_pt - q_ts - e_t;
+	ans->ve[3] = q_ts - q_sl - e_s;
+
+	//Additional states
+	ans->ve[4] = forcing_values[0]*c_1;
+	ans->ve[5] = q_pl;
+	ans->ve[6] = q_sl * A_h - q_b*60.0;
+	for(i=0;i<numparents;i++)
+		ans->ve[6] += y_p[i]->ve[6] * 60.0;
+		//ans->ve[6] += k_3*y_p[i]->ve[3]*A_h;
+	ans->ve[6] *= v_B/L;
+}
+
+
 //Type 260
 //Contains 3 layers on hillslope: ponded, top layer, soil
 //Order of parameters: A_i,L_i,A_h | invtau,c_1,c_2
@@ -427,6 +511,96 @@ void LinearHillslope_MonthlyEvap(double t,VEC* y_i,VEC** y_p,unsigned short int 
 	//Hillslope
 	ans->ve[1] = forcing_values[0]*c_1 - q_pl - e_p;
 	ans->ve[2] = forcing_values[0]*c_2 - q_al - e_a;
+}
+
+
+//Type 191
+//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
+//The numbering is:	0   1   2   3  4    5    6   7
+//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g,v_B
+//The numbering is:        0      1        2     3  4   5   6
+void LinearHillslope_MonthlyEvap_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
+{
+	unsigned short int i;
+
+	double lambda_1 = global_params->ve[1];
+	double v_B = global_params->ve[6];
+
+	double L = params->ve[1];
+	double A_h = params->ve[2];
+	double k2 = params->ve[3];
+	double k3 = params->ve[4];
+	double invtau = params->ve[5];
+	double c_1 = params->ve[6];
+	double c_2 = params->ve[7];
+
+	double q = y_i->ve[0];		//[m^3/s]
+	double s_p = y_i->ve[1];	//[m]
+	double s_a = y_i->ve[2];	//[m]
+	double q_b = y_i->ve[5];	//[m^3/s]
+
+	double q_pl = k2 * s_p;
+	double q_al = k3 * s_a;
+
+	//Evaporation
+	double C_p,C_a,C_T,Corr_evap;
+	//double e_pot = forcing_values[1] * (1e-3/60.0);
+	double e_pot = forcing_values[1] * (1e-3/(30.0*24.0*60.0));	//[mm/month] -> [m/min]
+
+	if(e_pot > 0.0)
+	{
+		C_p = s_p / e_pot;
+		C_a = s_a / e_pot;
+		C_T = C_p + C_a;
+	}
+	else
+	{
+		C_p = 0.0;
+		C_a = 0.0;
+		C_T = 0.0;
+	}
+
+	//Corr_evap = (!state && C_T > 0.0) ? 1.0/C_T : 1.0;
+	Corr_evap = (C_T > 1.0) ? 1.0/C_T : 1.0;
+
+	double e_p = Corr_evap * C_p * e_pot;
+	double e_a = Corr_evap * C_a * e_pot;
+
+	//Discharge
+	ans->ve[0] = -q + (q_pl + q_al) * A_h/60.0;
+	for(i=0;i<numparents;i++)
+		ans->ve[0] += y_p[i]->ve[0];
+	ans->ve[0] = invtau * pow(q,lambda_1) * ans->ve[0];
+
+	//Hillslope
+	ans->ve[1] = forcing_values[0]*c_1 - q_pl - e_p;
+	ans->ve[2] = forcing_values[0]*c_2 - q_al - e_a;
+
+	//Additional states
+	ans->ve[3] = forcing_values[0]*c_1;
+	ans->ve[4] = q_pl;
+	ans->ve[5] = q_al * A_h - q_b * 60.0;
+	for(i=0;i<numparents;i++)
+		ans->ve[5] += y_p[i]->ve[5] * 60.0;
+		//ans->ve[5] += k3*y_p[i]->ve[2]*A_h;
+	ans->ve[5] *= v_B/L;
+}
+
+
+//Type 191
+//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
+//The numbering is:	0   1   2   3  4    5    6   7
+//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g,v_B
+//The numbering is:        0      1        2     3  4   5   6
+void LinearHillslope_Reservoirs_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
+{
+	ans->ve[0] = forcing_values[2];
+	ans->ve[1] = 0.0;
+	ans->ve[2] = 0.0;
+	ans->ve[3] = 0.0;
+	ans->ve[4] = 0.0;
+	ans->ve[5] = 0.0;
+	ans->ve[6] = 0.0;
 }
 
 
@@ -2403,6 +2577,15 @@ void CheckConsistency_Model30(VEC* y,VEC* params,VEC* global_params)
 	if(y->ve[2] > params->ve[4])	y->ve[2] = params->ve[4];
 	if(y->ve[3] < 0.0)	y->ve[3] = 0.0;
 	else if(y->ve[3] > 1.0)	y->ve[3] = 1.0;
+}
+
+void CheckConsistency_Nonzero_AllStates_q(VEC* y,VEC* params,VEC* global_params)
+{
+	unsigned int i;
+
+	if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
+	for(i=1;i<y->dim;i++)
+		if(y->ve[i] < 0.0)	y->ve[i] = 0.0;
 }
 
 

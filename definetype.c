@@ -12,7 +12,7 @@
 //disk_params:		The number of enries in param that are read from DEM data.
 //Currently, this program assumes the same number of differential equations at each link.
 //UnivVars* GlobalVars:	Contains the global variables for the system.
-void SetParamSizes(UnivVars* GlobalVars)
+void SetParamSizes(UnivVars* GlobalVars,void* external)
 {
 	unsigned short int type = GlobalVars->type;
 	unsigned int num_global_params;
@@ -356,6 +356,24 @@ void SetParamSizes(UnivVars* GlobalVars)
 				GlobalVars->num_forcings = 2;
 				break;
 //--------------------------------------------------------------------------------------------
+		case 191:	GlobalVars->dim = GlobalVars->problem_dim = 6;
+				GlobalVars->template_flag = 0;
+				GlobalVars->assim_flag = 0;
+				GlobalVars->diff_start = 0;
+				GlobalVars->no_ini_start = 3;
+				num_global_params = 7;
+				GlobalVars->uses_dam = 0;
+				GlobalVars->params_size = 8;
+				GlobalVars->iparams_size = 0;
+				GlobalVars->dam_params_size = 0;
+				GlobalVars->area_idx = 0;
+				GlobalVars->areah_idx = 2;
+				GlobalVars->disk_params = 3;
+				GlobalVars->num_dense = 2;
+				GlobalVars->convertarea_flag = 0;
+				GlobalVars->num_forcings = 3;
+				break;
+//--------------------------------------------------------------------------------------------
 		case 200:	GlobalVars->dim = GlobalVars->problem_dim = 2;
 				GlobalVars->template_flag = 0;
 				GlobalVars->assim_flag = 0;
@@ -442,6 +460,24 @@ void SetParamSizes(UnivVars* GlobalVars)
 				GlobalVars->areah_idx = 2;
 				GlobalVars->disk_params = 3;
 				GlobalVars->num_dense = 1;
+				GlobalVars->convertarea_flag = 0;
+				GlobalVars->num_forcings = 3;
+				break;
+//--------------------------------------------------------------------------------------------
+		case 254:	GlobalVars->dim = GlobalVars->problem_dim = 7;
+				GlobalVars->template_flag = 0;
+				GlobalVars->assim_flag = 0;
+				GlobalVars->diff_start = 0;
+				GlobalVars->no_ini_start = 4;
+				num_global_params = 12;
+				GlobalVars->uses_dam = 0;
+				GlobalVars->params_size = 8;
+				GlobalVars->iparams_size = 0;
+				GlobalVars->dam_params_size = 0;
+				GlobalVars->area_idx = 0;
+				GlobalVars->areah_idx = 2;
+				GlobalVars->disk_params = 3;
+				GlobalVars->num_dense = 2;
 				GlobalVars->convertarea_flag = 0;
 				GlobalVars->num_forcings = 3;
 				break;
@@ -540,7 +576,7 @@ void SetParamSizes(UnivVars* GlobalVars)
 				break;
 //--------------------------------------------------------------------------------------------
 		default:	printf("Error: Invalid type (%u) in SetParamSizes.\n",type);
-				abort();
+				MPI_Abort(MPI_COMM_WORLD,1);
 //--------------------------------------------------------------------------------------------
 	}
 
@@ -551,6 +587,16 @@ void SetParamSizes(UnivVars* GlobalVars)
 	{
 		GlobalVars->dense_indices[0] = 1;	//Storage
 	}
+	else if(type == 254)
+	{
+		GlobalVars->dense_indices[0] = 0;	//Discharge
+		GlobalVars->dense_indices[1] = 6;	//Baseflow
+	}
+	else if(type == 191)
+	{
+		GlobalVars->dense_indices[0] = 0;	//Discharge
+		GlobalVars->dense_indices[1] = 5;	//Baseflow
+	}
 	else	//For all other types, just needed the first entry
 	{
 		GlobalVars->dense_indices[0] = 0;	//Discharge
@@ -560,7 +606,7 @@ void SetParamSizes(UnivVars* GlobalVars)
 	if(GlobalVars->global_params->dim < num_global_params)
 	{
 		printf("\nError: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params->dim,num_global_params,type);
-		abort();
+		MPI_Abort(MPI_COMM_WORLD,1);
 	}
 	if(GlobalVars->global_params->dim > num_global_params)
 		printf("\nWarning: Obtained %u parameters from .gbl file. Expected %u for model type %hu.\n",GlobalVars->global_params->dim,num_global_params,type);
@@ -568,18 +614,18 @@ void SetParamSizes(UnivVars* GlobalVars)
 
 
 //Performs some unit conversions on the data in params. This takes place immediately after reading in the DEM data,
-//so these changes are available in all routines of user.c, if params is available. Note that dam data
+//so these changes are available in all routines of definetype.c, if params is available. Note that dam data
 //and precalculations are not available here.
 //VEC* params:		Vector of parameters to convert.
 //unsigned int type:	The index of the model.
-void ConvertParams(VEC* params,unsigned int type)
+void ConvertParams(VEC* params,unsigned int type,void* external)
 {
 	if(type == 19)
 	{
 		params->ve[1] *= 1000;	//L: km -> m
 		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
 	}
-	else if(type == 190)
+	else if(type == 190 || type == 191)
 	{
 		params->ve[1] *= 1000;	//L: km -> m
 		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
@@ -646,7 +692,7 @@ void ConvertParams(VEC* params,unsigned int type)
 		params->ve[5] *= 1000.0; //MaxInfRate:  m/hr -> mm/hr
 */
 	}
-	if(type == 219)
+	else if(type == 219)
 	{
 		params->ve[1] *= 1000;	//L: km -> m
 		params->ve[2] *= 1e6;	//A_h: km^2 -> m^2
@@ -657,11 +703,10 @@ void ConvertParams(VEC* params,unsigned int type)
 		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
 		params->ve[4] *= .001;		//H_h: mm -> m
 	}
-	else if(type == 252 || type == 260)
+	else if(type == 252 || type == 260 || type == 254)
 	{
 		params->ve[1] *= 1000;		//L_h: km -> m
 		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
-		//params->ve[4] *= .001;		//H_h: mm -> m
 	}
 	else if(type == 253)
 	{
@@ -690,7 +735,7 @@ void ConvertParams(VEC* params,unsigned int type)
 //unsigned int type: 	The index of the model to be set.
 //unsigned int exp_imp: 0 if using an explicit solver, 1 if implicit.
 //unsigned int dam: 	0 if no dam is present at link, 1 if a dam is present.
-void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned short int dam)
+void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned short int dam,void* external)
 {
 	//Select appropriate RK Solver for the numerical method (link->RKSolver)
 //	if(type == 19)
@@ -840,6 +885,18 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 		link->state_check = NULL;
 		link->CheckConsistency = &CheckConsistency_Nonzero_3States;
 	}
+	else if(type == 191)
+	{
+		if(link->res)
+		{
+			link->f = &LinearHillslope_Reservoirs_extras;
+			link->RKSolver = &ForcedSolutionSolver;
+		}
+		else	link->f = &LinearHillslope_MonthlyEvap_extras;
+		link->alg = NULL;
+		link->state_check = NULL;
+		link->CheckConsistency = &CheckConsistency_Nonzero_AllStates_q;
+	}
 	else if(type == 200)	//This is for use with SIMPLE only
 	{
 		link->f = NULL;
@@ -880,6 +937,18 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 		link->alg = NULL;
 		link->state_check = NULL;
 		link->CheckConsistency = &CheckConsistency_Nonzero_4States;
+	}
+	else if(type == 254)
+	{
+		if(link->res)
+		{
+			link->f = &TopLayerHillslope_Reservoirs;
+			link->RKSolver = &ForcedSolutionSolver;
+		}
+		else			link->f = &TopLayerHillslope_extras;
+		link->alg = NULL;
+		link->state_check = NULL;
+		link->CheckConsistency = &CheckConsistency_Nonzero_AllStates_q;
 	}
 	else if(type == 260)
 	{
@@ -933,7 +1002,7 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 //unsigned int disk_params:	The first entry of params that should be set here.
 //unsigned int params_size:	First entry of the dam data. Don't change this entry or later unless you want to modify the dam!
 //unsigned int type:		The index of the model.
-void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,unsigned int disk_params,unsigned int params_size,unsigned short int dam,unsigned int type)
+void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,unsigned int disk_params,unsigned int params_size,unsigned short int dam,unsigned int type,void* external)
 {
 	if(type == 19)
 	{
@@ -958,12 +1027,12 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		vals[6] = RC*(0.001/60.0);		//(mm/hr->m/min)  c_1
 		vals[7] = (1.0-RC)*(0.001/60.0);	//(mm/hr->m/min)  c_2
 	}
-	else if(type == 190)
+	else if(type == 190 || type == 191)
 	{
 		//Order of parameters: A_i,L_i,A_h,k2,k3,invtau,c_1,c_2
 		//The numbering is:	0   1   2   3  4    5    6   7
-		//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g
-		//The numbering is:        0      1        2     3  4   5 
+		//Order of global_params: v_r,lambda_1,lambda_2,RC,v_h,v_g (,v_B)
+		//The numbering is:        0      1        2     3  4   5     6
 		double* vals = params->ve;
 		double A_i = params->ve[0];
 		double L_i = params->ve[1];
@@ -1353,6 +1422,29 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		vals[6] = (0.001/60.0);		//(mm/hr->m/min)  c_1
 		vals[7] = A_h/60.0;	//  c_2
 	}
+	else if(type == 254)
+	{
+		//Order of parameters: A_i,L_i,A_h,invtau,k_2,k_i,c_1,c_2
+		//The numbering is:	0   1   2    3     4   5   6   7 
+		//Order of global_params: v_0,lambda_1,lambda_2,v_h,k_3,k_I_factor,h_b,S_L,A,B,exponent,v_B
+		//The numbering is:        0      1        2     3   4     5        6   7  8 9  10       11
+		double* vals = params->ve;
+		double A_i = params->ve[0];
+		double L_i = params->ve[1];
+		double A_h = params->ve[2];
+
+		double v_0 = global_params->ve[0];
+		double lambda_1 = global_params->ve[1];
+		double lambda_2 = global_params->ve[2];
+		double v_h = global_params->ve[3];
+		double k_i_factor = global_params->ve[5];
+
+		vals[3] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
+		vals[4] = v_h * L_i/A_h * 60.0;	//[1/min] k_2
+		vals[5] = vals[4] * k_i_factor;	//[1/min] k_i
+		vals[6] = (0.001/60.0);		//(mm/hr->m/min)  c_1
+		vals[7] = A_h/60.0;	//  c_2
+	}
 	else if(type == 260)
 	{
 		//Order of parameters: A_i,L_i,A_h | invtau,c_1,c_2
@@ -1473,7 +1565,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 //VEC* y_0:		The initial condition vector. Store the initial data here.
 //unsigned int type:	The index of the model.
 //Returns the state of the solution (use 0 if state discontinuities are not a concern).
-unsigned int ReadInitData(VEC* global_params,VEC* params,IVEC* iparams,QVSData* qvs,unsigned short int dam,VEC* y_0,unsigned int type)
+unsigned int ReadInitData(VEC* global_params,VEC* params,IVEC* iparams,QVSData* qvs,unsigned short int dam,VEC* y_0,unsigned int type,unsigned int diff_start,unsigned int no_init_start,void* external)
 {
 	unsigned int state;
 
@@ -1495,7 +1587,7 @@ unsigned int ReadInitData(VEC* global_params,VEC* params,IVEC* iparams,QVSData* 
 		y_0->ve[2] = RC * S_0 * A_h;
 		y_0->ve[3] = (1.0 - RC) * S_0 * A_h;
 
-		state = dam_check(y_0,global_params,params,qvs,dam); 
+		state = dam_check(y_0,global_params,params,qvs,dam);
 		dam_q(y_0,global_params,params,qvs,state,y_0);
 		return state;
 	}
@@ -1575,6 +1667,13 @@ params->ve[11] = 0.0;
 */
 		return 0;
 	}
+	else if(type == 191)
+	{
+		//For this type, the extra states need to be set (3,4,5)
+		y_0->ve[3] = 0.0;
+		y_0->ve[4] = 0.0;
+		y_0->ve[5] = 0.0;	//I'm not really sure what to use here...
+	}
 	else if(type == 200)
 	{
 		//For type 200, only the discharge has been set. Need to set the storage.
@@ -1584,6 +1683,13 @@ params->ve[11] = 0.0;
 		//The numbering is:        0      1        2     3   4   5  6
 		y_0->ve[1] = params->ve[0] / (global_params->ve[6] + global_params->ve[0]) * y_0->ve[0];
 		return 0;
+	}
+	else if(type == 254)
+	{
+		//For this type, the extra states need to be set (4,5,6)
+		y_0->ve[4] = 0.0;
+		y_0->ve[5] = 0.0;
+		y_0->ve[6] = 0.0;	//I'm not really sure what to use here...
 	}
 	else if(type == 300)
 	{

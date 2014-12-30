@@ -28,6 +28,7 @@ asynchsolver* Asynch_Init(MPI_Comm comm)
 	asynch->peakfile = NULL;
 	asynch->peakfilename = NULL;
 	asynch->custom_model = NULL;
+	asynch->ExternalInterface = NULL;
 	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS;i++)	asynch->db_connections[i] = NULL;
 	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START;i++)	asynch->forcings[i] = InitializeForcings();
 
@@ -39,23 +40,25 @@ asynchsolver* Asynch_Init(MPI_Comm comm)
 
 //Creates and loads a custom model
 //Return 1 if there is an error, 0 if everything is ok
-int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*),void (*Convert)(VEC*,unsigned int),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int),
-	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int))
+int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,void*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
+	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*))
 {
 	asynch->custom_model = (model*) malloc(sizeof(model));
-
+/*
+	// !!!! Commented for now. I might actually want functions set to NULL for interfaces... !!!!
 	if(!SetParamSizes || !Convert || !Routines || !Precalculations || !InitializeEqs)
 	{
 		if(my_rank == 0)
-			printf("[%i]: Error creating custom model: Some routines to initialize the model are NULL\n",my_rank);
+			printf("[%i]: Error creating custom model: Some routines to initialize the model are NULL.\n",my_rank);
 		return 1;
 	}
-
+*/
 	asynch->custom_model->SetParamSizes = SetParamSizes;
 	asynch->custom_model->Convert = Convert;
 	asynch->custom_model->Routines = Routines;
 	asynch->custom_model->Precalculations = Precalculations;
 	asynch->custom_model->InitializeEqs = InitializeEqs;
+
 	return 0;
 }
 
@@ -64,7 +67,7 @@ int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*),vo
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename)
 {
 	//Read in .gbl file
-	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model);
+	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model,asynch->ExternalInterface);
 	if(!asynch->GlobalVars)
 	{
 		printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
@@ -80,7 +83,7 @@ void Asynch_Load_System(asynchsolver* asynch)
 	//Read in remaining data from files
 	asynch->sys = Create_River_System_parallel(asynch->rkdfilename,&(asynch->N),&(asynch->my_sys),&(asynch->my_N),&(asynch->my_max_nodes),&(asynch->my_data),&(asynch->assignments),&(asynch->getting),
 		&(asynch->AllMethods),&(asynch->nummethods),asynch->GlobalVars,asynch->GlobalErrors,&(asynch->save_list),&(asynch->my_save_size),&(asynch->save_size),
-		&(asynch->peaksave_size),&(asynch->id_to_loc),asynch->forcings,asynch->db_connections,&(asynch->workspace),asynch->custom_model);
+		&(asynch->peaksave_size),&(asynch->id_to_loc),asynch->forcings,asynch->db_connections,&(asynch->workspace),asynch->custom_model,asynch->ExternalInterface);
 	if(asynch->sys == NULL)
 	{
 		printf("[%i]: An error occurred setting up the river network. See above messages for details.\n",my_rank);
@@ -330,7 +333,7 @@ int Asynch_Create_Peakflows_Output(asynchsolver* asynch)
 	return -1;
 }
 
-//Return 0 means ok, -1 means no peakflows to output
+//Return 0 means ok, 1 means no peakflows to output
 int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
 {
 	if(asynch->GlobalVars->peaks_loc_filename)
@@ -342,12 +345,9 @@ int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
 		return 1;
 }
 
-//Return 0 means ok, -1 means no peakflows to output
+//Return 0 means ok, 1 means no peakflows to output
 int Asynch_Get_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname)
 {
-
-printf("I see %s\n",asynch->GlobalVars->peaks_loc_filename);
-
 	if(asynch->GlobalVars->peaks_loc_filename)
 	{
 		sprintf(peakflowname,asynch->GlobalVars->peaks_loc_filename);
@@ -389,7 +389,8 @@ int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time)
 
 int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,IVEC*,int,void*),int* used_states,int num_states)
 {
-	unsigned int i,idx;
+	unsigned int i,j,idx;
+	UnivVars* GlobalVars = asynch->GlobalVars;
 
 	//Find index
 	for(i=0;i<asynch->GlobalVars->num_print;i++)
@@ -426,6 +427,32 @@ int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (
 	asynch->GlobalVars->output_sizes[idx] = GetByteSize(data_type);
 	GetSpecifier(asynch->GlobalVars->output_specifiers[idx],data_type);
 
+	//Check if anything should be added to dense_indices from used_states
+	unsigned int num_to_add = 0;
+	unsigned int* states_to_add = (unsigned int*) malloc(num_states*sizeof(unsigned int));
+	for(i=0;i<num_states;i++)
+	{
+		for(j=0;j<GlobalVars->num_dense;j++)
+		{
+			if(used_states[i] == GlobalVars->dense_indices[j])
+			{
+				states_to_add[num_to_add++] = used_states[i];
+				break;
+			}
+		}
+	}
+
+	if(num_to_add)
+	{
+		GlobalVars->dense_indices = (unsigned int*) realloc(GlobalVars->dense_indices,(GlobalVars->num_dense + num_to_add)*sizeof(unsigned int));
+		for(i=0;i<num_to_add;i++)
+			GlobalVars->dense_indices[i+GlobalVars->num_dense] = states_to_add[i];
+		GlobalVars->num_dense += num_to_add;
+		merge_sort_1D(GlobalVars->dense_indices,GlobalVars->num_dense);
+	}
+
+	free(states_to_add);
+
 	return 1;
 }
 
@@ -443,6 +470,12 @@ int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsi
 	asynch->GlobalVars->peakflow_output = func;
 
 	return 1;
+}
+
+//Returns the link id of the link at my_sys[location]
+unsigned int Asynch_Get_Local_LinkID(asynchsolver* asynch,unsigned int location)
+{
+	return asynch->sys[asynch->my_sys[location]]->ID;
 }
 
 //Returns 1 if output name is set,
@@ -660,13 +693,14 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 			//if(current->save_flag)
 			//	WriteStep(t_0,current->list->head->y_approx,asynch->GlobalVars,current->params,current->iparams,current->state,asynch->outputfile,current->output_user,&(current->pos));
 
-
 			//Set forcings
 			//!!!! This block was not here before I started toying with data assimilation stuff. Perhaps it causes problems with the forecasters... !!!!
 			if(current->forcing_buff)
 			{
 				for(k=0;k<num_forcings;k++)
 				{
+					if(!(asynch->forcings[k]->flag))	continue;
+
 					//Find the right index in rainfall
 					for(l=0;l<current->forcing_buff[k]->n_times-1;l++)
 						if( current->forcing_buff[k]->rainfall[l][0] <= t_0 && t_0 < current->forcing_buff[k]->rainfall[l+1][0] )	break;
@@ -694,7 +728,55 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 	}
 }
 
+//Allocates space for output_user at each link.
+//Returns 0 if everything is good, 1 if space is already allocated, 2 if an error occurred.
+int Asynch_Create_OutputUser_Data(asynchsolver* asynch,unsigned int data_size)
+{
+	if(!asynch)	return 2;
 
+	unsigned int my_N = asynch->my_N,i,*my_sys = asynch->my_sys;
+	Link** sys = asynch->sys;
+	
+	if(sys[my_sys[0]]->output_user)	return 1;
 
+	for(i=0;i<my_N;i++)
+		sys[my_sys[i]]->output_user = malloc(data_size);
+
+	return 0;
+}
+
+//Deallocates space for output_user at each link.
+//Returns 0 if everything is good, 1 if space is already deallocated, 2 if an error occurred.
+int Asynch_Free_OutputUser_Data(asynchsolver* asynch)
+{
+	if(!asynch)	return 2;
+
+	unsigned int my_N = asynch->my_N,i,*my_sys = asynch->my_sys;
+	Link** sys = asynch->sys;
+	
+	if(sys[my_sys[0]]->output_user == NULL)	return 1;
+
+	for(i=0;i<my_N;i++)
+	{
+		free(sys[my_sys[i]]->output_user);
+		sys[my_sys[i]]->output_user = NULL;
+	}
+
+	return 0;
+}
+
+//Copies source into output_user for the link with location my_sys[location]
+void Asynch_Copy_Local_OutputUser_Data(asynchsolver* asynch,unsigned int location,void* source,unsigned int size)
+{
+	//printf("Copying size %u %u %p\n",size,location,asynch->sys[asynch->my_sys[location]]->output_user);
+	memcpy(asynch->sys[asynch->my_sys[location]]->output_user,source,size);
+}
+
+//Allocates space for output_user for the link with location my_sys[location]
+void Asynch_Set_Size_Local_OutputUser_Data(asynchsolver* asynch,unsigned int location,unsigned int size)
+{
+	asynch->sys[asynch->my_sys[location]]->output_user = malloc(size);
+	//printf("Setting to size %u %p\n",size,asynch->sys[asynch->my_sys[location]]->output_user);
+}
 
 

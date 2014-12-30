@@ -617,6 +617,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 				}
 				fread(data_storage,GlobalVars->output_sizes[j],1,inputfile);
 				nbytes += CatBinaryToString(&(submission[nbytes]),GlobalVars->output_specifiers[j],data_storage,GlobalVars->output_types[j],"\n");
+//printf("copying %s\n",submission);
 				result = PQputCopyData(conninfo->conn,submission,nbytes);
 				if(result != 1)
 				{
@@ -649,7 +650,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 		{
 			sprintf(conninfo->query,"INSERT INTO %s (SELECT * FROM %s);",GlobalVars->hydro_table,temptablename);
 			res = PQexec(conninfo->conn,conninfo->query);
-			CheckResError(res,"dropping temporary output table");
+			CheckResError(res,"inserting temporary output table to final table");
 			PQclear(res);
 
 			//Delete temporary table, if it exists

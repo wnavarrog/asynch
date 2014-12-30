@@ -27,9 +27,9 @@ int days_in_month(int mon,int year)
 		return days[mon] + 1;			//If this line is reached, then the current year is at least 2400.
 							//I cannot explain to you in words how terrified I am to think that someone has
 							//used code I wrote for 400 years. Seriously, something better and with
-							//less bugs has surely come along. Also, anyone reading this in 2400 is
+							//less bugs has surely come along. Also, anyone reading this in the year 2400 is
 							//probably a robot, which is pretty cool.
-							//Scott J. Small,  April 2, 2014
+							//--Scott,  April 2, 2014
 	}
 	else
 		return days[mon];

@@ -13,8 +13,8 @@
 #include "io.h"
 #include "data_types.h"
 
-extern int my_rank;
-extern int np;
+int my_rank;
+int np;
 
 typedef struct
 {
@@ -50,12 +50,13 @@ typedef struct
 	Forcing* forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//Forcing connection information
 	data_types* dt_info;
 	model* custom_model;
+	void* ExternalInterface;
 } asynchsolver;
 
 //Constructor / Destructor related routings
 asynchsolver* Asynch_Init(MPI_Comm comm);
-int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*),void (*Convert)(VEC*,unsigned int),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int),
-	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int));
+int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,void*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
+	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*),unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*));
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename);
 void Asynch_Load_System(asynchsolver* asynch);
 void Asynch_Free(asynchsolver* asynch);
@@ -98,13 +99,17 @@ int Asynch_Set_Temp_Files(asynchsolver* asynch,double set_time,void* set_value,u
 int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time);
 int Asynch_Get_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
 int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
-
+unsigned int Asynch_Get_Local_LinkID(asynchsolver* asynch,unsigned int location);
 
 //Routines for output
 int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,IVEC*,int,void*),int* used_states,int num_states);
 int Asynch_Check_Output(asynchsolver* asynch,char* name);
 int Asynch_Check_Peakflow_Output(asynchsolver* asynch,char* name);
 int Asynch_Set_Peakflow_Output(asynchsolver* asynch,char* name,void (*func)(unsigned int,double,VEC*,VEC*,VEC*,double,unsigned int,void*,char*));
+int Asynch_Create_OutputUser_Data(asynchsolver* asynch,unsigned int data_size);
+int Asynch_Free_OutputUser_Data(asynchsolver* asynch);
+void Asynch_Copy_Local_OutputUser_Data(asynchsolver* asynch,unsigned int location,void* source,unsigned int size);
+void Asynch_Set_Size_Local_OutputUser_Data(asynchsolver* asynch,unsigned int location,unsigned int size);
 
 #endif
 

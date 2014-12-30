@@ -326,28 +326,11 @@ typedef struct Link
 
 typedef struct
 {
-/*
-	unsigned int dim;
-	unsigned int diff_start;
-	unsigned int no_ini_start;
-	unsigned int num_global_params;
-	unsigned short int uses_dam;
-	unsigned int params_size;
-	unsigned int dam_params_size;
-	unsigned int area_idx;
-	unsigned int areah_idx;
-	unsigned int disk_params;
-	unsigned int num_dense;
-	short int convertarea_flag;
-	unsigned int num_forcings;
-	unsigned int* dense_indices;
-*/
-	void (*SetParamSizes)(UnivVars*);
-	void (*Convert)(VEC*,unsigned int);
-	void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int);
-	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int);
-	unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int);
-
+	void (*SetParamSizes)(UnivVars*,void*);
+	void (*Convert)(VEC*,unsigned int,void*);
+	void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*);
+	void (*Precalculations)(Link*,VEC*,VEC*,IVEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*);
+	unsigned int (*InitializeEqs)(VEC*,VEC*,IVEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*);
 } model;
 
 typedef struct Forcing

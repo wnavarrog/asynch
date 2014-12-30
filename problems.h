@@ -43,10 +43,13 @@ int LinearHillslope_Evap_Check(VEC* y,VEC* params,VEC* global_params,QVSData* qv
 void Hillslope_Toy(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void LinearHillslope_Evap_RC(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void LinearHillslope_MonthlyEvap(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+void LinearHillslope_MonthlyEvap_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+void LinearHillslope_Reservoirs_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void NonLinearHillslope(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void TopLayerHillslope(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void TopLayerHillslope_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void TopLayerNonlinearExp(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+void TopLayerHillslope_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 
 //Tiling
 void Tiling(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
@@ -83,6 +86,7 @@ void CheckConsistency_Nonzero_3States(VEC* y,VEC* params,VEC* global_params);
 void CheckConsistency_Nonzero_4States(VEC* y,VEC* params,VEC* global_params);
 void CheckConsistency_Model5(VEC* y,VEC* params,VEC* global_params);
 void CheckConsistency_Model30(VEC* y,VEC* params,VEC* global_params);
+void CheckConsistency_Nonzero_AllStates_q(VEC* y,VEC* params,VEC* global_params);
 
 
 #endif

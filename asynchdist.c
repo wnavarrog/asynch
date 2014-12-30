@@ -61,7 +61,7 @@ int main(int argc,char* argv[])
 
 	//Prepare output files
 	Asynch_Prepare_Temp_Files(asynch);
-	Asynch_Write_Current_Step(asynch);
+	Asynch_Write_Current_Step(asynch);		//!!!! Wow, this sucks. Is there a way to get rid of it? !!!!
 	Asynch_Prepare_Peakflow_Output(asynch);
 	Asynch_Prepare_Output(asynch);
 
@@ -101,7 +101,7 @@ int main(int argc,char* argv[])
 	Asynch_Create_Output(asynch,NULL);
 	Asynch_Create_Peakflows_Output(asynch);
 
-	//Cleanup
+	//Clean up
 	Asynch_Delete_Temporary_Files(asynch);
 	Asynch_Free(asynch);
 	return 0;

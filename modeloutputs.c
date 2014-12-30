@@ -1,5 +1,6 @@
 #include "modeloutputs.h"
 
+//!!!! Is num_print ever needed here? !!!!
 void SetOutputFunctions(char* outputname,char* specifier,unsigned int num_print,unsigned int* states_used,short int* output_size,short int* output_type,int (**output_i)(double,VEC*,VEC*,VEC*,IVEC*,int,void*),double (**output_d)(double,VEC*,VEC*,VEC*,IVEC*,int,void*))
 {
 	if(strcmp(outputname,"Time") == 0)
@@ -30,6 +31,24 @@ void SetOutputFunctions(char* outputname,char* specifier,unsigned int num_print,
 		states_used[3] = 1;
 		*output_type = ASYNCH_DOUBLE;
 		*output_d = &Output_State3;
+	}
+	else if(strcmp(outputname,"State4") == 0)
+	{
+		states_used[4] = 1;
+		*output_type = ASYNCH_DOUBLE;
+		*output_d = &Output_State4;
+	}
+	else if(strcmp(outputname,"State5") == 0)
+	{
+		states_used[5] = 1;
+		*output_type = ASYNCH_DOUBLE;
+		*output_d = &Output_State5;
+	}
+	else if(strcmp(outputname,"State6") == 0)
+	{
+		states_used[6] = 1;
+		*output_type = ASYNCH_DOUBLE;
+		*output_d = &Output_State6;
 	}
 	else if(strcmp(outputname,"TimeI") == 0)
 	{
@@ -155,6 +174,21 @@ double Output_State2(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* ipar
 double Output_State3(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
 {
 	return y_i->ve[3];
+}
+
+double Output_State4(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
+{
+	return y_i->ve[4];
+}
+
+double Output_State5(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
+{
+	return y_i->ve[5];
+}
+
+double Output_State6(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
+{
+	return y_i->ve[6];
 }
 
 int Output_Time_Int(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)

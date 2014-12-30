@@ -122,7 +122,6 @@ RKSolutionList* Create_List(VEC* y0,double t0,int dim,unsigned int num_dense,uns
 	{
 		list->list_data[i]->y_approx = v_get(dim);
 		list->list_data[i]->k = (VEC**) malloc(s*sizeof(VEC*));
-		//for(j=0;j<s;j++)	list->list_data[i]->k[j] = v_get(dim);
 		for(j=0;j<s;j++)	list->list_data[i]->k[j] = v_get(num_dense);
 	}
 
