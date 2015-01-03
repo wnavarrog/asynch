@@ -21,7 +21,7 @@ asynch.Prepare_Peakflow_Output()
 asynch.Prepare_Output()
 
 #Advance solver
-asynch.Advance(1)
+asynch.Advance(True)
 print 'Calculations done!'
 
 #Take a snapshot
@@ -32,6 +32,6 @@ asynch.Create_Output(None)
 asynch.Create_Peakflows_Output()
 
 #Cleanup
-asynch.Delete_Temporary_Files()
+#asynch.Delete_Temporary_Files()
 
 

@@ -236,7 +236,7 @@ print '[',my_rank,'/',np,']:','''I'm ready to go with''',my_N,'/',N,'links.'
 #Advance solver
 comm.Barrier()
 start = time.clock()
-asynch.Advance(1)
+asynch.Advance(True)
 comm.Barrier()
 stop = time.clock()
 if my_rank == 0:	print 'Calculations done! Total time',stop-start,'seconds'
@@ -251,7 +251,7 @@ asynch.Create_Peakflows_Output()
 #Cleanup
 if printing_linkid == 0:
 	asynch.Free_OutputUser_Data()
-asynch.Delete_Temporary_Files()
+#asynch.Delete_Temporary_Files()
 
 
 

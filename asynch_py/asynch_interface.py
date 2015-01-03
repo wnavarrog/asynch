@@ -129,6 +129,7 @@ class asynchsolver:
 		self.my_rank = self.comm.Get_rank()
 		ranks = range(0,self.np)
 		self.asynch_obj = self.lib.Asynch_Init_py(self.np,(c_int * self.np)(*ranks))
+		self.tempfiles_exist = False
 		#ranks = numpy.zeros((self.np,1),numpy.dtype('i4'))
 		#for i in range(self.np):	ranks[i] = i
 		#self.asynch_obj = self.lib.Asynch_Init_py(self.np,ranks.ctypes.data)
@@ -166,6 +167,9 @@ class asynchsolver:
 		self.lib.Asynch_Copy_Local_OutputUser_Data_py.restype = None
 
 	def __del__(self):
+		if self.tempfiles_exist == True:
+			self.Delete_Temporary_Files()
+
 		self.lib.Free_PythonInterface(self.asynch_obj)
 		self.lib.Asynch_Free(self.asynch_obj)
 
@@ -187,13 +191,18 @@ class asynchsolver:
 
 	#Advance solver
 	def Advance(self,print_flag):
-		self.lib.Asynch_Advance(self.asynch_obj,print_flag)
+		if print_flag == True:
+			c_print_flag = 1'
+		else:
+			c_print_flag = 0'
+		self.lib.Asynch_Advance(self.asynch_obj,c_print_flag)
 
 	#Data file routines
 	def Prepare_Output(self):
 		self.lib.Asynch_Prepare_Output(self.asynch_obj)
 
 	def Prepare_Temp_Files(self):
+		self.tempfiles_exist = True
 		self.lib.Asynch_Prepare_Temp_Files(self.asynch_obj)
 
 	def Prepare_Peakflow_Output(self):
@@ -206,6 +215,7 @@ class asynchsolver:
 		return self.lib.Asynch_Create_Peakflows_Output(self.asynch_obj)
 
 	def Delete_Temporary_Files(self):
+		self.tempfiles_exist = False
 		return self.lib.Asynch_Delete_Temporary_Files(self.asynch_obj)
 
 	def Write_Current_Step(self):
