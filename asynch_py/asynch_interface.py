@@ -192,9 +192,9 @@ class asynchsolver:
 	#Advance solver
 	def Advance(self,print_flag):
 		if print_flag == True:
-			c_print_flag = 1'
+			c_print_flag = 1
 		else:
-			c_print_flag = 0'
+			c_print_flag = 0
 		self.lib.Asynch_Advance(self.asynch_obj,c_print_flag)
 
 	#Data file routines
