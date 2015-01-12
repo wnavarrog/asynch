@@ -217,6 +217,19 @@ void Asynch_Set_RainDB_Starttime(asynchsolver* asynch,unsigned int epoch_timesta
 	//asynch->GlobalVars->raindb_start_time = epoch_timestamp;
 }
 
+//Returns 0 if everything is good. Returns 1 if init_flag does not support a timestamp.
+int Asynch_Set_Init_Timestamp(asynchsolver* asynch,unsigned int epoch_timestamp)
+{
+	if(asynch->GlobalVars->init_flag != 3)	return 1;
+	asynch->GlobalVars->init_timestamp = epoch_timestamp;
+	return 0;
+}
+
+unsigned int Asynch_Get_Init_Timestamp(asynchsolver* asynch)
+{
+	return asynch->GlobalVars->init_timestamp;
+}
+
 void Asynch_Set_Init_File(asynchsolver* asynch,char* filename)
 {
 	sprintf(asynch->GlobalVars->init_filename,"%s",filename);

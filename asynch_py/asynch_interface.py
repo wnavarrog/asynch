@@ -156,6 +156,7 @@ class asynchsolver:
 		self.lib.Asynch_Set_System_State_py.restype = None
 		self.lib.Asynch_Reset_Peakflow_Data.restype = None
 		self.lib.Asynch_Get_Local_LinkID.restype = c_uint
+		self.lib.Asynch_Get_Init_Timestamp.restype = c_uint
 		self.lib.Asynch_Copy_Local_OutputUser_Data.restype = None
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data.restype = None
 
@@ -261,6 +262,12 @@ class asynchsolver:
 
 	def Get_Local_LinkID(self,location):
 		return self.lib.Asynch_Get_Local_LinkID(self.asynch_obj,location)
+
+	def Set_Init_Timestamp(self,epoch_timestamp):
+		return self.lib.Asynch_Set_Init_Timestamp(self.asynch_obj,epoch_timestamp)
+
+	def Get_Init_Timestamp(self):
+		return self.lib.Asynch_Get_Init_Timestamp(self.asynch_obj)
 
 	#Probably not the most efficient. This currently assumes every proc has space for every link.
 	def Set_System_State(self,t_0,values):

@@ -47,7 +47,7 @@ typedef struct
 	FILE* peakfile;			//File for the peakflow data
 	char* peakfilename;		//Filename for .pea file
 	ConnData* db_connections[ASYNCH_MAX_DB_CONNECTIONS];	//Database connection information
-	Forcing* forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//Forcing connection information
+	Forcing* forcings[ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START];	//Forcing information
 	data_types* dt_info;
 	model* custom_model;
 	void* ExternalInterface;
@@ -100,6 +100,8 @@ int Asynch_Reset_Temp_Files(asynchsolver* asynch,double set_time);
 int Asynch_Get_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
 int Asynch_Set_Peakflow_Output_Name(asynchsolver* asynch,char* peakflowname);
 unsigned int Asynch_Get_Local_LinkID(asynchsolver* asynch,unsigned int location);
+int Asynch_Set_Init_Timestamp(asynchsolver* asynch,unsigned int epoch_timestamp);
+unsigned int Asynch_Get_Init_Timestamp(asynchsolver* asynch);
 
 //Routines for output
 int Asynch_Set_Output(asynchsolver* asynch,char* name,short int data_type,void (*func)(double,VEC*,VEC*,VEC*,IVEC*,int,void*),int* used_states,int num_states);
