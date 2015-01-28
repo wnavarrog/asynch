@@ -500,6 +500,24 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 				GlobalVars->num_forcings = 2;
 				break;
 //--------------------------------------------------------------------------------------------
+		case 261:	GlobalVars->dim = GlobalVars->problem_dim = 5;
+				GlobalVars->template_flag = 0;
+				GlobalVars->assim_flag = 0;
+				GlobalVars->diff_start = 1;
+				GlobalVars->no_ini_start = GlobalVars->dim;
+				num_global_params = 10;
+				GlobalVars->uses_dam = 1;
+				GlobalVars->params_size = 8;
+				GlobalVars->iparams_size = 0;
+				GlobalVars->dam_params_size = 0;
+				GlobalVars->area_idx = 0;
+				GlobalVars->areah_idx = 2;
+				GlobalVars->disk_params = 4;
+				GlobalVars->num_dense = 1;
+				GlobalVars->convertarea_flag = 0;
+				GlobalVars->num_forcings = 4;
+				break;
+//--------------------------------------------------------------------------------------------
 		case 300:	GlobalVars->dim = 2;		//Make this a little bigger for the variational errors
 				GlobalVars->problem_dim = 1;
 				GlobalVars->template_flag = 0;
@@ -583,7 +601,7 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 	//Create the dense_indices list
 	//Note: If assim_flag is set, the variational eqs stuff is set outside here
 	GlobalVars->dense_indices = (unsigned int*) malloc(GlobalVars->num_dense * sizeof(unsigned int));
-	if(type == 21 || type == 22 || type == 23 || type == 40)
+	if(type == 21 || type == 22 || type == 23 || type == 40 || type == 261)
 	{
 		GlobalVars->dense_indices[0] = 1;	//Storage
 	}
@@ -703,7 +721,7 @@ void ConvertParams(VEC* params,unsigned int type,void* external)
 		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
 		params->ve[4] *= .001;		//H_h: mm -> m
 	}
-	else if(type == 252 || type == 260 || type == 254)
+	else if(type == 252 || type == 260 || type == 254 || type == 261)
 	{
 		params->ve[1] *= 1000;		//L_h: km -> m
 		params->ve[2] *= 1e6;		//A_h: km^2 -> m^2
@@ -740,10 +758,12 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 	//Select appropriate RK Solver for the numerical method (link->RKSolver)
 //	if(type == 19)
 //		link->RKSolver = &ExplicitRKSolverDiscont;
-	if( (type == 21 || type == 22 || type == 23 || type == 40) && dam == 1)
+	if( (type == 21 || type == 22 || type == 23 || type == 40 || type == 261) && dam == 1)
 		link->RKSolver = &ExplicitRKIndex1SolverDam;
-	else if( (type == 21 || type == 22 || type ==23 || type == 40) && dam == 0)
+	else if( (type == 21 || type == 22 || type == 23 || type == 40 || type == 261) && dam == 0)
 		link->RKSolver = &ExplicitRKIndex1Solver;
+	else if(type == 315)
+		link->RKSolver = &ExplicitRKSolver_DataAssim;
 	else if(exp_imp == 0)
 		link->RKSolver = &ExplicitRKSolver;
 //	else if(link->method->exp_imp == 1)
@@ -927,7 +947,6 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 	}
 	else if(type == 253)
 	{
-		//if(link->ID == 318208)
 		if(link->res)
 		{
 			link->f = &TopLayerHillslope_Reservoirs;
@@ -956,6 +975,18 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 		link->alg = NULL;
 		link->state_check = NULL;
 		link->CheckConsistency = &CheckConsistency_Nonzero_4States;
+	}
+	else if(type == 261)
+	{
+		if(link->res)
+		{
+			link->f = &TopLayerNonlinearExpSoilvel_Reservoirs;
+			link->RKSolver = &ForcedSolutionSolver;
+		}
+		link->f = &TopLayerNonlinearExpSoilvel;
+		link->alg = &dam_TopLayerNonlinearExpSoilvel;
+		link->state_check = &dam_check_qvs;
+		link->CheckConsistency = &CheckConsistency_Nonzero_AllStates_q;
 	}
 	else if(type == 300)
 	{
@@ -1464,6 +1495,27 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		vals[4] = (0.001/60.0);		//(mm/hr->m/min)  c_1
 		vals[5] = A_h/60.0;	//  c_2
 	}
+	else if(type == 261)
+	{
+		//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
+		//The numbering is:	0   1   2   3  |    4    5   6   7
+		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
+		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		double* vals = params->ve;
+		double A_i = params->ve[0];
+		double L_i = params->ve[1];
+		double A_h = params->ve[2];
+		double S_h = params->ve[3];
+
+		double v_0 = global_params->ve[0];
+		double lambda_1 = global_params->ve[1];
+		double lambda_2 = global_params->ve[2];
+
+		vals[4] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
+		vals[5] = (0.001/60.0);		//(mm/hr->m/min)  c_1
+		vals[6] = A_h/60.0;	//  c_2
+		vals[7] = pow(S_h,0.5)/L_i;	//c_3
+	}
 	else if(type == 300 || type == 301)
 	{
 		//Order of parameters: L_i,A_h,A_i,h_b,h_H,max_inf_rate,K_sat,S_h,eta,b_H,c_H,d_H,invtau,epsilon,c_1,c_2,c_3,c_4,c_5,c_6
@@ -1691,6 +1743,32 @@ params->ve[11] = 0.0;
 		y_0->ve[5] = 0.0;
 		y_0->ve[6] = 0.0;	//I'm not really sure what to use here...
 	}
+	else if(type == 261)
+	{
+		//Discharges are initially read into y_0[1] when no dam is present. So y_0[1] is copied to y_0[0],
+		//then the corresponding storage is moved into y_0[1]. When a dam is present, y_0[1] will have the storage.
+		//So the discharge can be calculated and stored into y_0[0].
+
+		//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
+		//The numbering is:	0   1   2   3  |    4    5   6   7
+		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
+		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		if(dam)
+		{
+			int state = dam_check_qvs(y_0,global_params,params,qvs,dam);
+			dam_TopLayerNonlinearExpSoilvel(y_0,global_params,params,qvs,state,y_0);
+			return state;
+		}
+		else
+		{
+			double lambda_1 = global_params->ve[1];
+			double tau_in_secs = 1.0/params->ve[4] * 60.0;
+			y_0->ve[0] = y_0->ve[1];
+			//y_0->ve[1] = pow(tau_in_secs*y_0->ve[0],1.0-lambda_1);
+			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
+			return -1;
+		}
+	}
 	else if(type == 300)
 	{
 		//For this type, all initial conditions for variational equation must be set here.
@@ -1755,71 +1833,6 @@ params->ve[11] = 0.0;
 	}
 }
 
-/*
-//!!!! Note: This routine will be phased out in the future. !!!!
-//Sets the dimensions for the type of .ini or .rkd file. These should be set as dim in SetParamsSizes.
-//unsigned int rktype:		The type of the .rkd file.
-//unsigned int inittype:	The type of the .ini file.
-//unsigned int* rkdim:		The number of unknowns the .rkd file assumes.
-//unsigned int* initdim:	The number of unknowns the .ini file assumes.
-void SetRKInitDim(unsigned int rktype,unsigned int inittype,unsigned int* rkdim,unsigned int* initdim)
-{
-	if(rktype == 6)				*rkdim = 4;
-	else if(rktype == 4 || rktype == 5)	*rkdim = 4;
-	else if(rktype == 1 || rktype == 2)	*rkdim = 2;
-	else if(rktype == 3)			*rkdim = 3;
-	else if(rktype == 0)			*rkdim = 2;
-	else if(rktype == 101)			*rkdim = 3;
-	else if(rktype == 15)			*rkdim = 1;
-	else if(rktype == 19)			*rkdim = 3;
-	else if(rktype == 20)			*rkdim = 3;
-	else if(rktype == 21)			*rkdim = 3;
-	else if(rktype == 22 || rktype == 23)	*rkdim = 3;
-	else if(rktype == 30)			*rkdim = 4;
-	else if(rktype == 40)			*rkdim = 3;
-	else if(rktype == 60)			*rkdim = 3;
-	else if(rktype == 105)			*rkdim = 2;
-	else if(rktype == 190)			*rkdim = 3;
-	else if(rktype == 200)			*rkdim = 2;
-	else if(rktype == 219)			*rkdim = 1;
-	else if(rktype == 250)			*rkdim = 3;
-	else if(rktype == 252)			*rkdim = 4;
-	else if(rktype == 2000)			*rkdim = 2;
-	else if(rktype == 300 || rktype == 301 || rktype == 315)
-	{
-		printf("Error: Type %u does not work with rkd files.\n",rktype);
-		abort();
-	}
-	else					*rkdim = -1;
-
-	if(inittype == 6)			*initdim = 4;
-	else if(inittype == 4 || inittype == 5)	*initdim = 4;
-	else if(inittype == 1 || inittype == 2)	*initdim = 2;
-	else if(inittype == 3)			*initdim = 3;
-	else if(inittype == 0)			*initdim = 1;
-	else if(inittype == 101)		*initdim = 3;
-	else if(inittype == 15)			*initdim = 2;
-	else if(inittype == 19)			*initdim = 3;
-	else if(inittype == 20)			*initdim = 3;
-	else if(inittype == 21)			*initdim = 3;	//!!!! Should be 1? !!!!
-	else if(inittype == 22 || inittype == 23)*initdim = 3;	//!!!! Should be 1? !!!!
-	else if(inittype == 30)			*initdim = 4;
-	else if(inittype == 40)			*initdim = 3;	//!!!! Should be 1? !!!!
-	else if(inittype == 60)			*rkdim = 3;
-	else if(inittype == 105)		*initdim = 2;
-	else if(inittype == 190)		*initdim = 3;
-	else if(inittype == 200)		*initdim = 1;
-	else if(inittype == 219)		*initdim = 1;
-	else if(inittype == 250)		*initdim = 3;
-	else if(inittype == 252)		*initdim = 4;
-	else if(inittype == 300)		*initdim = 1;
-	else if(inittype == 301)		*initdim = 2;
-	else if(inittype == 315)		*initdim = 2;
-	else if(inittype == 2000)		*initdim = 2;
-	else 					*initdim = -1;
-}
-*/
-
 //If using data assimilation, sets the global errors and dim correctly
 void AssimError(unsigned int N,UnivVars* GlobalVars,ErrorData* GlobalErrors)
 {
@@ -1861,115 +1874,9 @@ void AssimError(unsigned int N,UnivVars* GlobalVars,ErrorData* GlobalErrors)
 	GlobalVars->dense_indices = realloc(GlobalVars->dense_indices,GlobalVars->num_dense * sizeof(unsigned int));
 	for(i=old_num_dense;i<GlobalVars->num_dense;i++)
 	{
-		GlobalVars->dense_indices[i] = i;
+		//GlobalVars->dense_indices[i] = i;
+		GlobalVars->dense_indices[i] = (i-old_num_dense) + GlobalVars->problem_dim;
 	}
 }
-
-/*
-//!!!! Consider putting this into problems and setting a function pointer !!!!
-//Checks that the variable y is consistent with constraints
-//VEC* y:		The current state of the system of ODEs.
-//unsigned int dim:	The dimension of the ODEs.
-//unsigned int type:	The index of the model.
-void CheckConsistency(VEC* y,unsigned int dim,unsigned int type,VEC* params,VEC* global_params)
-{
-	if(type <= 5)	//!!!! Break this up, remove dim !!!!
-	{
-		if(y->ve[0] < 1e-14)		y->ve[0] = 1e-14;
-		if(dim > 1 && y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(dim > 2 && y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(dim > 2 && y->ve[2] > 1.0)	y->ve[2] = 1.0;
-		if(dim > 3 && y->ve[3] < 0.0)	y->ve[3] = 0.0;
-		if(dim > 3 && y->ve[3] > 1.0 - y->ve[2])	y->ve[3] = 1.0 - y->ve[2];
-	}
-	else if(type == 6)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(y->ve[3] < 0.0)	y->ve[3] = 0.0;
-	}
-	else if(type == 15)
-	{
-		if(y->ve[0] < 1e-12)	y->ve[0] = 1e-12;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-	}
-	else if(type == 19 || type == 60 || type == 190)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-	}
-	else if(type == 20)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-	}
-	else if(type == 21 || type == 22 || type == 23 || type == 40)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(y->ve[3] < 0.0)	y->ve[3] = 0.0;
-	}
-	else if(type == 30)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(y->ve[2] > params->ve[4])	y->ve[2] = params->ve[4];
-		if(y->ve[3] < 0.0)	y->ve[3] = 0.0;
-		else if(y->ve[3] > 1.0)	y->ve[3] = 1.0;
-	}
-	else if(type == 105)
-	{
-		if(y->ve[0] < 0.0)	y->ve[0] = 0.0;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-	}
-	else if(type == 200)
-	{
-		if(y->ve[0] < 0.0)	y->ve[0] = 0.0;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-	}
-	else if(type == 219)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-	}
-	else if(type == 250)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(y->ve[2] > global_params->ve[7])	y->ve[2] = global_params->ve[7];
-	}
-	else if(type == 252)
-	{
-		if(y->ve[0] < 1e-14)	y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-		if(y->ve[2] < 0.0)	y->ve[2] = 0.0;
-		if(y->ve[3] < 0.0)	y->ve[3] = 0.0;
-	}
-	else if(type == 300)
-	{
-		if(y->ve[0] < 0.0)	y->ve[0] = 1e-12;
-	}
-	else if(type == 301)
-	{
-		if(y->ve[0] < 0.0)	y->ve[0] = 1e-12;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-	}
-	else if(type == 315)
-	{
-		if(y->ve[0] < 1e-12)	y->ve[0] = 1e-12;
-		if(y->ve[1] < 0.0)	y->ve[1] = 0.0;
-	}
-	else if(type == 2000)
-	{
-		if(y->ve[0] < 1e-14)		y->ve[0] = 1e-14;
-		if(y->ve[1] < 0.0)		y->ve[1] = 0.0;
-	}
-}
-*/
 
 

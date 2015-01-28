@@ -80,7 +80,7 @@ void m_add(MAT* A,MAT* B,MAT* C)
 		for(j=0;j<n;j++)	C->me[i][j] = A->me[i][j] + B->me[i][j];
 }
 
-//Calculates v = A * v. Assumes dimensions work
+//Calculates v = A * u. Assumes dimensions work.
 void mv_mlt(MAT* A,VEC* u,VEC* v)
 {
 	unsigned int i,j;
@@ -91,6 +91,21 @@ void mv_mlt(MAT* A,VEC* u,VEC* v)
 	{
 		v->ve[i] = A->me[i][0] * u->ve[0];
 		for(j=1;j<n;j++)	v->ve[i] += A->me[i][j] * u->ve[j];
+	}
+}
+
+//Calculates v = A^T * u. Assumes dimensions work.
+//!!!! Cache issues? !!!!
+void mTv_mlt(MAT* A,VEC* u,VEC* v)
+{
+	unsigned int i,j;
+	unsigned int m = A->m;
+	unsigned int n = A->n;
+
+	for(i=0;i<n;i++)
+	{
+		v->ve[i] = A->me[0][i] * u->ve[0];
+		for(j=1;j<m;j++)	v->ve[i] += A->me[j][i] * u->ve[j];
 	}
 }
 
@@ -421,6 +436,17 @@ void v_copy(VEC* v,VEC* w)
 		b[i] = a[i];
 }
 
+//Copies the the first t elements of v into w.
+void v_copy_u(VEC* v,VEC* w,unsigned int t)
+{
+	unsigned int i;
+	double* a = v->ve;
+	double* b = w->ve;
+
+	for(i=0;i<t;i++)
+		b[i] = a[i];
+}
+
 //Copies the contents of A into B.
 void m_copy(MAT* A,MAT* B)
 {
@@ -515,6 +541,21 @@ double norm_inf(VEC* v,VEC* w,unsigned int start)
 	double max = fabs(v->ve[start]/w->ve[start]);
 	double val;
 	for(i=start+1;i<v->dim;i++)
+	{
+		val = fabs(v->ve[i]/w->ve[i]);
+		max = (val > max) ? val : max;
+	}
+
+	return max;
+}
+
+//Computes the infinity norm of v. v_i is divided first by w_i. Only uses the first t elements.
+double norm_inf_u(VEC* v,VEC* w,unsigned int start,unsigned int t)
+{
+	unsigned int i;
+	double max = fabs(v->ve[start]/w->ve[start]);
+	double val;
+	for(i=start+1;i<t;i++)
 	{
 		val = fabs(v->ve[i]/w->ve[i]);
 		max = (val > max) ? val : max;

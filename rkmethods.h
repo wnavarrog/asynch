@@ -28,6 +28,7 @@ int ExplicitRKIndex1SolverDam(Link* link_i,UnivVars* GlobalVars,int* assignments
 int ExplicitRKIndex1Solver(Link* link_i,UnivVars* GlobalVars,int* assignments,short int print_flag,FILE* outputfile,ConnData* conninfo,Forcing** forcings,TempStorage* workspace);
 int ExplicitRKSolverDiscont(Link* link_i,UnivVars* GlobalVars,int* assignments,short int print_flag,FILE* outputfile,ConnData* conninfo,Forcing** forcings,TempStorage* workspace);
 int RadauRKSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,short int print_flag,FILE* outputfile,ConnData* conninfo,Forcing** forcings,TempStorage* workspace);
+int ExplicitRKSolver_DataAssim(Link* link_i,UnivVars* GlobalVars,int* assignments,short int print_flag,FILE* outputfile,ConnData* conninfo,Forcing** forcings,TempStorage* workspace);
 
 //Forced solution methods
 int ForcedSolutionSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,short int print_flag,FILE* outputfile,ConnData* conninfo,Forcing** forcings,TempStorage* workspace);

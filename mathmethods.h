@@ -33,6 +33,7 @@ void m_free(MAT* A);
 void v_add(VEC* u,VEC* v,VEC* w,unsigned int start);
 void m_add(MAT* A,MAT* B,MAT* C);
 void mv_mlt(MAT* A,VEC* u,VEC* v);
+void mTv_mlt(MAT* A,VEC* u,VEC* v);
 void mm_mlt(MAT* A,MAT* B,MAT* C);
 void mTm_mlt(MAT* A,MAT* B,MAT* C);
 void mmT_mlt(MAT* A,MAT* B,MAT* C);
@@ -55,12 +56,14 @@ void VsqrtDVT_mlt(MAT* V,VEC* D,MAT* A,VEC* temp);
 double vTAv(MAT* A,VEC* v);
 
 void v_copy(VEC* v,VEC* w);
+void v_copy_u(VEC* v,VEC* w,unsigned int t);
 void m_copy(MAT* A,MAT* B);
 VEC* lagrange_weights(short unsigned int s,VEC* c);
 //double lagrange_bary(double theta,short unsigned int s,VEC* c,VEC** Q,VEC* w);
 void lagrange_bary(double theta,VEC* c,VEC** Z,VEC* w,VEC* sum);
 double lagrange(double theta,short unsigned int s,VEC* c,VEC** Q);
 double norm_inf(VEC* v,VEC* w,unsigned int start);
+double norm_inf_u(VEC* v,VEC* w,unsigned int start,unsigned int t);
 double vector_norminf(VEC* v,unsigned int start);
 void Print_Vector(VEC* v);
 void Print_Matrix(MAT* A);
@@ -78,6 +81,13 @@ void Print_MatrixC(MAT* A);
 		(y)->ve[ii] = (alpha)*(x)->ve[ii] + (y)->ve[ii]; \
 }
 
+#define daxpy_u(alpha,x,y,start,t) \
+{ \
+	int ii; \
+	for(ii=(start);ii<(t);ii++) \
+		(y)->ve[ii] = (alpha)*(x)->ve[ii] + (y)->ve[ii]; \
+}
+
 #define min(val1,val2)	(((val1) > (val2)) ? (val2) : (val1))
 #define max(val1,val2)	(((val1) < (val2)) ? (val2) : (val1))
 
@@ -86,6 +96,13 @@ void Print_MatrixC(MAT* A);
 	int ii; \
 	int dim_ii = (v)->dim; \
 	for(ii=start;ii<dim_ii;ii++) \
+		(v)->ve[ii] = (val) * (v)->ve[ii]; \
+}
+
+#define sv_mlt_u(val,v,start,t) \
+{ \
+	int ii; \
+	for(ii=start;ii<(t);ii++) \
 		(v)->ve[ii] = (val) * (v)->ve[ii]; \
 }
 
