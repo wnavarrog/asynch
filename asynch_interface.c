@@ -70,7 +70,8 @@ void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename)
 	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model,asynch->ExternalInterface);
 	if(!asynch->GlobalVars)
 	{
-		printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
+		if(my_rank == 0)	printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
+		else			sleep(2);
 		MPI_Abort(asynch->comm,1);
 	}
 }

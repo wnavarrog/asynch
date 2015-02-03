@@ -819,7 +819,7 @@ getchar();
 		free(temp_upstream);
 		free(temp_numupstream);
 		free(counter);
-
+/*
 		//Try removing low order links from the upstream lists
 		printf("!!!! Removing low order links from upstream list...!!!!\n");
 		unsigned int cut_off = 2,drop;
@@ -835,7 +835,7 @@ getchar();
 //printf("checking %i (%i)\n",system[i]->ID,system[i]->parents[j]->ID);
 				for(k=0;k<system[i]->numupstream[j];k++)
 				{
-					if(order[system[i]->upstream[j][k]] <= cut_off)
+					if(order[system[i]->upstream[j][k]] <= cut_off)	//!!!! Once this happens, the rest of the links can be dropped !!!!
 					{
 						drop++;
 					}
@@ -851,67 +851,6 @@ getchar();
 
 		free(order);
 		free(complete);
-
-/*
-for(i=0;i<*N;i++)
-{
-	printf("ID = %u\n",system[i]->ID);
-	for(j=0;j<system[i]->numparents;j++)
-	{
-		for(l=0;l<system[i]->numupstream[j];l++)
-			printf("%u ",system[i]->upstream[j][l]);
-		printf("\n****\n");
-	}
-}
-
-getchar();
-*/
-
-/*
-		//Set the upstream links
-		//unsigned int** counter = (unsigned int**) malloc(*N*sizeof(unsigned int*));	//Holds the current index of temp_upstream[i]
-		//for(i=0;i<*N;i++)	counter[i] = (unsigned int*) calloc(system[i]->numparents,sizeof(unsigned int));
-		unsigned int** temp_upstream = (unsigned int**) malloc(*N*sizeof(unsigned int*));	//temp_upstream[i] is list of all links upstream from link i
-		for(i=0;i<*N;i++)
-			temp_upstream[i] = (unsigned int*) malloc(temp_numupstream[system[i]->location] * sizeof(unsigned int));
-		unsigned int* counter = (unsigned int*) calloc(*N,sizeof(unsigned int));
-
-		for(i=0;i<*N;i++)
-		{
-			for(current = system[i]; current != NULL; current = current->c)
-			{
-				curr_loc = current->location;
-				temp_upstream[curr_loc][ counter[curr_loc] ] = i;
-				counter[curr_loc]++;
-			}
-		}
-
-		//!!!! This may not be necessary. Actually, it might be. !!!!
-		//for(i=0;i<*N;i++)
-		//	merge_sort_1D(temp_upstream[i],counter[i]);
-		free(counter);
-
-		//Move the data from temp_upstream into the child upstream
-		for(i=0;i<*N;i++)
-		{
-			system[i]->upstream = (unsigned int**) malloc(system[i]->numparents * sizeof(unsigned int*));
-			for(j=0;j<system[i]->numparents;j++)
-				system[i]->upstream[j] = temp_upstream[system[i]->parents[j]->location];
-		}
-
-		//Set number of upstream link to parents
-		for(i=0;i<*N;i++)
-		{
-			system[i]->numupstream = (unsigned int*) malloc(system[i]->numparents * sizeof(unsigned int));
-			for(j=0;j<system[i]->numparents;j++)
-				system[i]->numupstream[j] = temp_numupstream[system[i]->parents[j]->location];
-		}
-
-		//Cleanup
-		for(i=0;i<*N;i++)
-			if(system[i]->c == NULL)	free(temp_upstream[i]);
-		free(temp_upstream);
-		free(temp_numupstream);
 */
 	}
 
@@ -1386,7 +1325,21 @@ getchar();
 
 		if(!( (system[i]->ID == j) && (j == k) ))
 		{
-			printf("Error: Links must be listed in the same order in every data file. %u %u %u\n",system[i]->ID,j,k);
+			if(my_rank == 0)
+			{
+				printf("[%i]: Error: Links must be listed in the same order in every data file. %u %u %u\n",my_rank,system[i]->ID,j,k);
+
+				//Give further hints about the error
+				if(system[i]->ID == j && j != k)
+					printf("[%i]: Hint: the problem seems to be in the initial condition source.\n",my_rank);
+				else if(system[i]->ID != j && j == k)
+					printf("[%i]: Hint: the problem seems to be in the topology data source.\n",my_rank);
+				else if(system[i]->ID == k && j != k)
+					printf("[%i]: Hint: the problem seems to be in the Runge-Kutta data source.\n",my_rank);
+				else
+					printf("[%i]: Hint: check the topology data source, initial condition source, and Runge-Kutta data source.\n",my_rank);
+			}
+
 			*N=0;
 			return NULL;
 		}
