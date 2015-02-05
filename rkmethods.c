@@ -1414,8 +1414,8 @@ int ExplicitRKIndex1SolverDam(Link* link_i,UnivVars* GlobalVars,int* assignments
 				}
 				else
 				{
-					printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
-					printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
+					//printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
+					//printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
 
 					//Cut the step size and redo the iteration
 					link_i->h = h * 0.5;
@@ -1869,8 +1869,8 @@ int ExplicitRKSolverDiscont(Link* link_i,UnivVars* GlobalVars,int* assignments,s
 				}
 				else
 				{
-					printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
-					printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
+					//printf("[%i]: Notice: Discontinuity error has converged. Rejecting current step.\n",my_rank);
+					//printf("[%i]: ID = %u t = %f old h = %e current error = %.16e  previous error = %.16e\n",my_rank,link_i->ID,t,h,curr_error,prev_error);
 
 					//Cut the step size and redo the iteration
 					link_i->h = h * 0.5;

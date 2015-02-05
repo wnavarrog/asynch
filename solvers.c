@@ -89,7 +89,7 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 			}while( (around < two_my_N) && (sys[my_sys[curr_idx]]->ready == 0 || done[curr_idx] == 1));
 			current = sys[my_sys[curr_idx]];
 /*
-if(current->h < 1e-8)
+//if(current->h < 1e-10)
 {
 	printf("[%i]: ID = %u time = %e step = %e\n",my_rank,current->ID,current->last_t,current->h);
 	Print_Vector(current->list->tail->y_approx);

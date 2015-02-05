@@ -101,7 +101,8 @@ typedef struct ForcingData
 typedef struct QVSData
 {
 	double** points;		//2D array with 2 columns. First column is time the rainfall changes to the rate in the second col
-	unsigned int n_values;		//Number of rows in rainfall
+	double* points_array;		//1D equivalent of points
+	unsigned int n_values;		//Number of rows in points (2*n_values is the number entries in points_array)
 } QVSData;
 
 /*

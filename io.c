@@ -52,7 +52,7 @@ ConnData* ReadDBC(char* filename,unsigned int string_size)
 	FILE* input = fopen(filename,"r");
 	if(!input)
 	{
-		printf("[%i]: Error opening .dbc file %s.\n",my_rank,filename);
+		if(my_rank == 0)	printf("[%i]: Error opening .dbc file %s.\n",my_rank,filename);
 		return NULL;
 	}
 

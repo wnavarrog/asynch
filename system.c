@@ -42,9 +42,12 @@ void Destroy_Link(Link* link_i,unsigned int list_length,int rkd_flag,Forcing** f
 		free(link_i->forcing_buff);
 		if(link_i->qvs != NULL && GlobalVars->template_flag == 0)
 		{
+/*
 			for(i=0;i<link_i->qvs->n_values;i++)
 				free(link_i->qvs->points[i]);
+*/
 			free(link_i->qvs->points);
+			free(link_i->qvs->points_array);
 			free(link_i->qvs);
 		}
 		if(link_i->JMatrix != NULL)

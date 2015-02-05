@@ -52,6 +52,9 @@ void TopLayerNonlinearExp(double t,VEC* y_i,VEC** y_p,unsigned short int numpare
 void TopLayerHillslope_extras(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
 void TopLayerNonlinearExpSoilvel_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+void TopLayerNonlinearExpSoilvel_ConstEta_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
+
 
 //Tiling
 void Tiling(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans);
@@ -81,6 +84,7 @@ void dam_q2(VEC* y,VEC* global_params,VEC* param,QVSData* qvs,int state,VEC* ans
 void dam_q3(VEC* y,VEC* global_params,VEC* param,QVSData* qvs,int state,VEC* ans);
 void dam_q_qvs(VEC* y,VEC* global_params,VEC* params,QVSData* qvs,int state,VEC* ans);
 void dam_TopLayerNonlinearExpSoilvel(VEC* y,VEC* global_params,VEC* params,QVSData* qvs,int state,VEC* ans);
+void dam_TopLayerNonlinearExpSoilvel_ConstEta(VEC* y,VEC* global_params,VEC* params,QVSData* qvs,int state,VEC* ans);
 
 //Consistency
 void CheckConsistency_Nonzero_1States(VEC* y,VEC* params,VEC* global_params);

@@ -1227,26 +1227,17 @@ getchar();
 				MPI_Abort(MPI_COMM_WORLD,1);
 			}
 
-/*
-			k = *N/2;
-			max = *N;
-			min = 0;
-			while((*id_to_loc)[k][0] != id)
-			{
-				if((*id_to_loc)[k][0] < id)	min = k;
-				else				max = k;
-				k = (max+min)/2;
-			}
-			m = (*id_to_loc)[k][1];
-*/
 			if(my_rank == (*assignments)[m] || (*getting)[m] == 1)
 			{
 				current = system[m];
 				current->dam = 1;
 				current->qvs = (QVSData*) malloc(sizeof(QVSData));
 				current->qvs->n_values = num_values;
+				current->qvs->points_array = (double*) malloc(2*num_values*sizeof(double));
 				current->qvs->points = (double**) malloc(num_values*sizeof(double*));
-				for(j=0;j<num_values;j++)	current->qvs->points[j] = (double*) malloc(2*sizeof(double));
+
+				for(j=0;j<num_values;j++)	current->qvs->points[j] = &(current->qvs->points_array[2*j]);
+				//for(j=0;j<num_values;j++)	current->qvs->points[j] = (double*) malloc(2*sizeof(double));
 
 				for(j=0;j<num_values;j++)
 					fscanf(damfile,"%lf %lf",&(current->qvs->points[j][0]),&(current->qvs->points[j][1]));
@@ -1271,6 +1262,125 @@ getchar();
 		}
 
 		fclose(damfile);
+	}
+	else if(GlobalVars->uses_dam && GlobalVars->dam_flag == 3)	//database connection
+	{
+		unsigned int num_dams = 0,num_pts,num_values;
+		short int procs_sending_to[np],mine;
+		double* array_holder;
+		MPI_Status status;
+
+		//Connect to the database and download data
+		if(my_rank == 0)
+		{
+			ConnectPGDB(db_connections[ASYNCH_DB_LOC_QVS]);
+			res = PQexec(db_connections[ASYNCH_DB_LOC_QVS]->conn,db_connections[ASYNCH_DB_LOC_QVS]->queries[0]);
+			if(CheckResError(res,"querying qvs relations"))	return NULL;
+			num_pts = PQntuples(res);
+
+			i = 0;
+			while(i < num_pts)
+			{
+				//Get link id and location
+				id = atoi(PQgetvalue(res,i,0));
+				curr_loc = find_link_by_idtoloc(id,*id_to_loc,*N);
+
+				//Count number of qvs values for current
+				for(j=i;j<num_pts && id == atoi(PQgetvalue(res,j,0));j++);
+				num_values = j-i;
+
+				//Extract the data points
+				array_holder = (double*) malloc(2*num_values*sizeof(double));
+				for(j=0;j<num_values;j++)
+				{
+					array_holder[2*j] = atof(PQgetvalue(res,i+j,1));
+					array_holder[2*j+1] = atof(PQgetvalue(res,i+j,2));
+				}
+
+				if(curr_loc < *N)
+				{
+					//Tell everyone what link has the current dam
+					MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+					mine = (my_rank == (*assignments)[curr_loc] || (*getting)[curr_loc]);
+					MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,MPI_COMM_WORLD);
+
+					//Send the data to whoever needs it
+					for(j=1;j<np;j++)
+					{
+						if(procs_sending_to[j])
+						{
+							MPI_Send(&num_values,1,MPI_UNSIGNED,j,0,MPI_COMM_WORLD);
+							MPI_Send(array_holder,2*num_values,MPI_DOUBLE,j,0,MPI_COMM_WORLD);
+						}
+					}
+
+					//Check if proc 0 needs the data
+					if(mine)
+					{
+						current = system[curr_loc];
+						current->dam = 1;
+						current->qvs = (QVSData*) malloc(sizeof(QVSData));
+						current->qvs->n_values = num_values;
+						current->qvs->points_array = array_holder;
+						current->qvs->points = (double**) malloc(num_values*sizeof(double*));
+						for(j=0;j<num_values;j++)	current->qvs->points[j] = &(current->qvs->points_array[2*j]);
+					}
+					else
+						free(array_holder);
+				}
+
+				i += num_values;
+			}
+
+			//Finish up
+			PQclear(res);
+			curr_loc = -1;
+			MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+		}
+		else	//Receive dam data
+		{
+			curr_loc = 0;
+			MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+
+			while((int)curr_loc != -1)
+			{
+				//Check if I need the data for this link
+				mine = (my_rank == (*assignments)[curr_loc] || (*getting)[curr_loc]);
+				MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,MPI_COMM_WORLD);
+
+				//Receive data
+				if(mine)
+				{
+					MPI_Recv(&num_values,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					array_holder = (double*) malloc(2*num_values*sizeof(double));
+					MPI_Recv(array_holder,2*num_values,MPI_DOUBLE,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					current = system[curr_loc];
+					current->dam = 1;
+					current->qvs = (QVSData*) malloc(sizeof(QVSData));
+					current->qvs->n_values = num_values;
+					current->qvs->points_array = array_holder;
+					current->qvs->points = (double**) malloc(num_values*sizeof(double*));
+					for(j=0;j<num_values;j++)	current->qvs->points[j] = &(current->qvs->points_array[2*j]);
+				}
+
+				//Check next signal
+				MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+			}
+		}
+
+		//Set error tolerance
+		if(rk_filename[0] == '\0')
+		{
+			GlobalVars->discont_tol = GlobalErrors->abstol->ve[0];
+			if(GlobalVars->discont_tol < 1e-12 && my_rank == 0)
+				printf("Warning: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
+		}
+		else
+		{
+			GlobalVars->discont_tol = 1e-8;
+			if(my_rank == 0)	printf("Notice: Discontinuity tolerance has been set to %e.\n",GlobalVars->discont_tol);
+		}
+
 	}
 	else	//Some other type of discontinuity (or none at all)
 	{
@@ -2007,6 +2117,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,2,"link id of downstream link for topology data or .dbc for topology"))	return NULL;
 		GlobalVars->rvr_filename = NULL;
 		db_connections[ASYNCH_DB_LOC_TOPO] = ReadDBC(db_filename,string_size);
+		if(!db_connections[ASYNCH_DB_LOC_TOPO])	return NULL;
 	}
 
 	//Grab the parameter data filename
@@ -2025,6 +2136,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,1,".dbc for parameters"))	return NULL;
 		GlobalVars->prm_filename = NULL;
 		db_connections[ASYNCH_DB_LOC_PARAMS] = ReadDBC(db_filename,string_size);
+		if(!db_connections[ASYNCH_DB_LOC_PARAMS])	return NULL;
 	}
 
 	//Grab the initial data file
@@ -2043,6 +2155,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		valsread = sscanf(linebuffer,"%*u %s %u",db_filename,&(GlobalVars->init_timestamp));
 		if(ReadLineError(valsread,1,".dbc for parameters"))	return NULL;
 		db_connections[ASYNCH_DB_LOC_INIT] = ReadDBC(db_filename,string_size);
+		if(!db_connections[ASYNCH_DB_LOC_INIT])	return NULL;
 	}
 
 	//Grab number of forcings
@@ -2139,7 +2252,9 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	{
 		GlobalVars->dam_filename = (char*) malloc(string_size*sizeof(char));
 		valsread = sscanf(linebuffer,"%*u %s",GlobalVars->dam_filename);
-		if(ReadLineError(valsread,1,".dam or .qvs filename"))	return NULL;
+		if(ReadLineError(valsread,1,"filename for dam info"))	return NULL;
+		if(GlobalVars->dam_flag == 3)
+			db_connections[ASYNCH_DB_LOC_QVS] = ReadDBC(GlobalVars->dam_filename,string_size);
 	}
 	else
 		GlobalVars->dam_filename = NULL;
