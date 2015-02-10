@@ -1297,6 +1297,18 @@ getchar();
 					array_holder[2*j+1] = atof(PQgetvalue(res,i+j,2));
 				}
 
+				//Check for an error real quick
+				for(j=1;j<num_values;j++)
+				{
+					if(array_holder[2*(j-1)] > array_holder[2*j] || array_holder[2*(j-1)+1] > array_holder[2*j+1])
+					{
+						printf("[%i]: Bad storage or discharge values found at link id %u. Check that the data is sorted correctly. (%u)\n",my_rank,id,j);
+						//break;
+						free(array_holder);
+						return NULL;
+					}
+				}
+
 				if(curr_loc < *N)
 				{
 					//Tell everyone what link has the current dam
@@ -2001,37 +2013,37 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->rain_filename = NULL;
 
 	//Grab the type and maxtime
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu %lf",&(GlobalVars->type),&(GlobalVars->maxtime));
 	if(ReadLineError(valsread,2,"type and maxtime"))	return NULL;
 
 	//Grab the output filename info
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->print_par_flag));
 	if(ReadLineError(valsread,1,"to print filename parameters"))	return NULL;
 
 	//Grab components to print
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%u",&(GlobalVars->num_print));
 	if(ReadLineError(valsread,1,"number of indices to print"))	return NULL;
 	GlobalVars->output_names = (char**) malloc(GlobalVars->num_print*sizeof(char*));
 	for(i=0;i<GlobalVars->num_print;i++)
 	{
 		GlobalVars->output_names[i] = (char*) malloc(string_size*sizeof(char));
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		valsread = sscanf(linebuffer,"%s",GlobalVars->output_names[i]);
 		if(ReadLineError(valsread,1,"a component to print"))	return NULL;
 	}
 
 	//Peakflow function
 	GlobalVars->peakflow_function_name = (char*) malloc(string_size*sizeof(char));
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%s",GlobalVars->peakflow_function_name);
 	if(ReadLineError(valsread,1,"peakflow function name"))	return NULL;
 	SetPeakflowOutputFunctions(GlobalVars->peakflow_function_name,&(GlobalVars->peakflow_output));
 
 	//Grab the parameters
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%u%n",&i,&total);
 	if(ReadLineError(valsread,1,"number of global parameters"))	return NULL;
 	GlobalVars->global_params = v_get(i);
@@ -2096,13 +2108,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	merge_sort_1D(GlobalVars->dense_indices,GlobalVars->num_dense);
 
 	//Grab the stored steps limits
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%u %i %u",&(GlobalVars->iter_limit),&(GlobalVars->max_transfer_steps),&(GlobalVars->discont_size));
 	if(ReadLineError(valsread,3,"steps stored, steps transfered, and discontinuity buffer size"))	return NULL;
 
 	//Grab the topology data filename
 	GlobalVars->outletlink = 0;
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->rvr_flag));
 	if(ReadLineError(valsread,1,"topology data flag"))	return NULL;
 	if(GlobalVars->rvr_flag == 0)
@@ -2121,7 +2133,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab the parameter data filename
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->prm_flag));
 	if(ReadLineError(valsread,1,"parameter flag"))	return NULL;
 	if(GlobalVars->prm_flag == 0)
@@ -2141,7 +2153,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 
 	//Grab the initial data file
 	GlobalVars->init_filename = NULL;
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->init_flag));
 	if(ReadLineError(valsread,1,"initial data flag"))	return NULL;
 	if(GlobalVars->init_flag == 0 || GlobalVars->init_flag == 1 || GlobalVars->init_flag == 2)
@@ -2160,7 +2172,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 
 	//Grab number of forcings
 	unsigned int got_forcings;
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%u",&got_forcings);
 	if(ReadLineError(valsread,1,"rainfall flag"))	return NULL;
 	if(got_forcings < GlobalVars->num_forcings && my_rank == 0)
@@ -2179,7 +2191,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->hydro_table = GlobalVars->peak_table = NULL;
 	for(i=0;i<GlobalVars->num_forcings;i++)
 	{
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		valsread = sscanf(linebuffer,"%hi",&(forcings[i]->flag));
 		if(ReadLineError(valsread,1,"forcings flag"))	return NULL;
 
@@ -2190,7 +2202,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			if(ReadLineError(valsread,1,"forcing data filename"))	return NULL;
 			if(forcings[i]->flag == 2 || forcings[i]->flag == 6)
 			{
-				ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 				valsread = sscanf(linebuffer,"%u %lf %u %u",&(forcings[i]->increment),&(forcings[i]->file_time),&(forcings[i]->first_file),&(forcings[i]->last_file));
 				if(ReadLineError(valsread,4,"time increment, file time, first file, and last file"))	return NULL;
 			}
@@ -2202,7 +2214,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			if(ReadLineError(valsread,1,".dbc for rainfall"))	return NULL;
 			db_connections[ASYNCH_DB_LOC_FORCING_START+i] = ReadDBC(db_filename,string_size);
 
-			ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 			valsread = sscanf(linebuffer,"%u %lf %u %u",&(forcings[i]->increment),&(forcings[i]->file_time),&(forcings[i]->first_file),&(forcings[i]->last_file));
 			if(ReadLineError(valsread,4,"time increment, file time, first file, and last file"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
@@ -2212,10 +2224,10 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 				if(GlobalVars->hydro_table)	printf("[%i]: Warning: Only one forcing of type 5 (forecasting) should be selected.\n",my_rank);
 				GlobalVars->halt_filename = (char*) malloc(string_size*sizeof(char));
 
-				ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 				valsread = sscanf(linebuffer,"%u",&(forcings[i]->num_rainsteps));
 				if(ReadLineError(valsread,1,"number of rainfall steps"))	return NULL;
-				ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 				valsread = sscanf(linebuffer,"%s",GlobalVars->halt_filename);
 				if(ReadLineError(valsread,1,"halt filename"))	return NULL;
 			}
@@ -2227,7 +2239,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			valsread = sscanf(linebuffer,"%*i %s",forcings[i]->filename);
 			if(ReadLineError(valsread,1,"recurring rainfall filename"))	return NULL;
 
-			ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 			valsread = sscanf(linebuffer,"%u %u",&(forcings[i]->first_file),&(forcings[i]->last_file));
 			if(ReadLineError(valsread,2,"first time, and last time"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
@@ -2244,7 +2256,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab the .dam filename
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->dam_flag));
 	if(ReadLineError(valsread,1,"dam flag"))	return NULL;
 
@@ -2260,7 +2272,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		GlobalVars->dam_filename = NULL;
 
 	//Get the link ids where reservoirs exist
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->res_flag));
 	if(ReadLineError(valsread,1,"res flag"))	return NULL;
 
@@ -2293,7 +2305,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab where to write the hydrographs
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->hydros_loc_flag));
 	if(ReadLineError(valsread,1,"hydrographs location"))	return NULL;
 
@@ -2321,7 +2333,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab where to write the peakflow data
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->peaks_loc_flag));
 	if(ReadLineError(valsread,1,"peakflow location"))	return NULL;
 
@@ -2347,7 +2359,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab the .sav files
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->hydrosave_flag));
 	if(ReadLineError(valsread,1,"hydrographs save flag"))	return NULL;
 
@@ -2367,7 +2379,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	else
 		GlobalVars->hydrosave_filename = NULL;
 
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->peaksave_flag));
 	if(ReadLineError(valsread,1,"peakflows save flag"))	return NULL;
 
@@ -2389,7 +2401,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->peakfilename = NULL;
 
 	//Grab data dump info
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->dump_loc_flag));
 	if(ReadLineError(valsread,1,"snapshot save flag"))	return NULL;
 
@@ -2414,10 +2426,10 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	//Grab folder locations
 	//GlobalVars->results_folder = (char*) malloc(string_size*sizeof(char));
 	GlobalVars->temp_filename = (char*) malloc(string_size*sizeof(char));
-	//ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	//valsread = sscanf(linebuffer,"%s",GlobalVars->results_folder);
 	//if(ReadLineError(valsread,1,"results folder"))	return NULL;
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%s",GlobalVars->temp_filename);
 	if(ReadLineError(valsread,1,"scratch work folder"))	return NULL;
 
@@ -2434,12 +2446,12 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	strcat(GlobalVars->temp_filename,db_filename);
 
 	//Grab adapative data
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%lf %lf %lf",&((*GlobalErrors)->facmin),&((*GlobalErrors)->facmax),&((*GlobalErrors)->fac));
 	if(ReadLineError(valsread,3,"facmin, facmax, fac"))	return NULL;
 
 	//Read in the flag for the error tolerances
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%i",&flag);
 	if(ReadLineError(valsread,1,"error tolerance flag"))	return NULL;
 
@@ -2459,7 +2471,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	if(flag == 0)	//Error data is found in the universal file
 	{
 		rkdfilename[0] = '\0';
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		valsread = sscanf(linebuffer,"%u",&flag);
 		if(ReadLineError(valsread,1,"RK method index"))	return NULL;
 		GlobalVars->method = flag;
@@ -2469,7 +2481,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		(*GlobalErrors)->abstol_dense = v_get(GlobalVars->dim);
 		(*GlobalErrors)->reltol_dense = v_get(GlobalVars->dim);
 
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		total = 0;
 		for(i=0;i<GlobalVars->dim;i++)
 		{
@@ -2478,7 +2490,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		total = 0;
 		for(i=0;i<GlobalVars->dim;i++)
 		{
@@ -2487,7 +2499,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		total = 0;
 		for(i=0;i<GlobalVars->dim;i++)
 		{
@@ -2496,7 +2508,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		total = 0;
 		for(i=0;i<GlobalVars->dim;i++)
 		{
@@ -2513,13 +2525,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		(*GlobalErrors)->abstol_dense = NULL;
 		(*GlobalErrors)->reltol_dense = NULL;
 
-		//ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 		valsread = sscanf(linebuffer,"%*i %s",rkdfilename);
 		if(ReadLineError(valsread,1,".rkd filename"))	return NULL;
 	}
 
 	//Check for end mark
-	ReadLineGlobal(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	sscanf(linebuffer,"%c",&endmark);
 	if(endmark != '#')
 	{
@@ -2610,7 +2622,7 @@ unsigned int* Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned
 }
 
 
-void ReadLineGlobal(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size)
+void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size)
 {
 	linebuffer[0] = '%';
 	while(!feof(globalfile) && (linebuffer[0] == '%' || linebuffer[0] == '\n'))	fgets(linebuffer,size,globalfile);

@@ -26,7 +26,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 
 unsigned int* Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int* size,ConnData *conninfo,unsigned short int flag);
 
-void ReadLineGlobal(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size);
+void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size);
 
 int ReadLineError(int valsread,int valswant,char message[]);
 

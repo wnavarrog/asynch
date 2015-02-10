@@ -2660,6 +2660,7 @@ int ForcedSolutionSolver(Link* link_i,UnivVars* GlobalVars,int* assignments,shor
 		}
 	}
 	link_i->f(t + h,y_0,NULL,link_i->numparents,GlobalVars->global_params,link_i->forcing_values,link_i->qvs,params,link_i->iparams,link_i->state,link_i->upstream,link_i->numupstream,new_y);
+	if(link_i->state_check)	new_node->state = link_i->state_check(new_y,GlobalVars->global_params,link_i->params,link_i->qvs,link_i->dam);
 
 //if(new_y->ve[0] < 0.0)
 //printf("Uh oh: %e at ID = %u\n",new_y->ve[0],link_i->ID);
