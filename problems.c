@@ -366,10 +366,11 @@ void TopLayerNonlinearExp(double t,VEC* y_i,VEC** y_p,unsigned short int numpare
 //Type 261
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
-//The numbering is:	0   1   2   3  |    4    5   6   7
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Contains 3 extra states: 
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,c_3
+//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5 
 void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
 {
 	unsigned short int i;
@@ -377,24 +378,25 @@ void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int 
 
 	//Global params
 	double lambda_1 = global_params->ve[1];
-	double h_b = global_params->ve[3];	//[m]
-	double k_D = global_params->ve[4];	//[1/s]
-	double k_dry = global_params->ve[5];	//[1/s]
-	double k_i = global_params->ve[6];	//[1/s]
-	double T_L = global_params->ve[7];	//[m]
-	double N = global_params->ve[8];	//[]
-	double phi = global_params->ve[9];	//[]
+	double N = global_params->ve[3];	//[]
+	double phi = global_params->ve[4];	//[]
+	double v_B = global_params->ve[5];	//[m/s]
 
 	//Local params
 	double L_i = params->ve[1];	//[m]
 	double A_h = params->ve[2];	//[m^2]
 	double S_h = params->ve[3];	//[]
+	double T_L = params->ve[4];	//[m]
+	double h_b = global_params->ve[5];	//[m]
+	double k_D = global_params->ve[6];	//[1/s]
+	double k_dry = global_params->ve[7];	//[1/s]
+	double k_i = global_params->ve[8];	//[1/s]
 
 	//Precalculations
-	double invtau = params->ve[4];	//[1/min]
-	double c_1 = params->ve[5];
-	double c_2 = params->ve[6];
-	double c_3 = params->ve[7];
+	double invtau = params->ve[9];	//[1/min]
+	double c_1 = params->ve[10];
+	double c_2 = params->ve[11];
+	double c_3 = params->ve[12];
 
 	//Forcings
 	double rainfall = forcing_values[0] * c_1;			//[mm/hr] -> [m/min]
@@ -407,6 +409,9 @@ void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int 
 	double s_p = y_i->ve[2];	//[m]
 	double s_t = y_i->ve[3];	//[m]
 	double s_s = y_i->ve[4];	//[m]
+	//double s_precip = y_i->ve[5];	//[m]
+	//double V_r = y_i->ve[6];	//[m^3]
+	double q_b = y_i->ve[7];	//[m^3/s]
 
 	//Evaporation
 	double e_p,e_t,e_s;
@@ -444,22 +449,30 @@ void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int 
 	ans->ve[2] = rainfall - q_pl - q_pt - e_p;
 	ans->ve[3] = q_pt - q_ts - e_t;
 	ans->ve[4] = q_ts - q_sl - e_s;
+
+	//Additional states
+	ans->ve[5] = rainfall;
+	ans->ve[6] = q_pl;
+	ans->ve[7] = q_sl * A_h - q_b*60.0;
+	for(i=0;i<numparents;i++)
+		ans->ve[7] += y_p[i]->ve[7] * 60.0;
+	ans->ve[7] *= v_B/L_i;
 }
 
 //Type 261
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
-//The numbering is:	0   1   2   3  |    4    5   6   7
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,c_3
+//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5 
 void dam_TopLayerNonlinearExpSoilvel(VEC* y,VEC* global_params,VEC* params,QVSData* qvs,int state,VEC* ans)
 {
 	double q1,q2,S1,S2,S_max,q_max,S;
 
 	//Parameters
 	double lambda_1 = global_params->ve[1];
-	double invtau = params->ve[4];
+	double invtau = params->ve[9];
 
 	//Find the discharge in [m^3/s]
 	if(state == -1)
@@ -488,10 +501,10 @@ void dam_TopLayerNonlinearExpSoilvel(VEC* y,VEC* global_params,VEC* params,QVSDa
 //Type 261
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
-//The numbering is:	0   1   2   3  |    4    5   6   7
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,c_3
+//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5 
 void TopLayerNonlinearExpSoilvel_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
 {
 	ans->ve[0] = forcing_values[3];
@@ -499,15 +512,18 @@ void TopLayerNonlinearExpSoilvel_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned
 	ans->ve[2] = 0.0;
 	ans->ve[3] = 0.0;
 	ans->ve[4] = 0.0;
+	ans->ve[5] = 0.0;
+	ans->ve[6] = 0.0;
+	ans->ve[7] = 0.0;
 }
 
 //Type 262
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h,eta | invtau,c_1,c_2,k_2
-//The numbering is:	0   1   2   3   4  |    5    6   7   8
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,eta,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,k_2
+//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5
 void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
 {
 	unsigned short int i;
@@ -515,30 +531,30 @@ void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned s
 
 	//Global params
 	double lambda_1 = global_params->ve[1];
-	double h_b = global_params->ve[3];	//[m]
-	double k_D = global_params->ve[4];	//[1/s]
-	double k_dry = global_params->ve[5];	//[1/s]
-	double k_i = global_params->ve[6];	//[1/s]
-	double T_L = global_params->ve[7];	//[m]
-	double N = global_params->ve[8];	//[]
-	double phi = global_params->ve[9];	//[]
+	double N = global_params->ve[3];	//[]
+	double phi = global_params->ve[4];	//[]
+	double v_B = global_params->ve[5];	//[m/s]
 
 	//Local params
 	double L_i = params->ve[1];	//[m]
 	double A_h = params->ve[2];	//[m^2]
 	double S_h = params->ve[3];	//[]
-	double eta = params->ve[4];	//[]
+	double T_L = params->ve[4];	//[m]
+	double eta = params->ve[5];	//[]
+	double h_b = global_params->ve[6];	//[m]
+	double k_D = global_params->ve[7];	//[1/s]
+	double k_dry = global_params->ve[8];	//[1/s]
+	double k_i = global_params->ve[9];	//[1/s]
 
 	//Precalculations
-	double invtau = params->ve[5];	//[1/min]
-	double c_1 = params->ve[6];
-	double c_2 = params->ve[7];
-	double k_2 = params->ve[8];
+	double invtau = params->ve[10];	//[1/min]
+	double c_1 = params->ve[11];
+	double c_2 = params->ve[12];
+	double k_2 = params->ve[13];
 
 	//Forcings
 	double rainfall = forcing_values[0] * c_1;			//[mm/hr] -> [m/min]
 	double e_pot = forcing_values[1] * (1e-3/(30.0*24.0*60.0));	//[mm/month] -> [m/min]
-	//double eta = forcing_values[2];					//[]
 
 	//System states
 	double q = y_i->ve[0];		//[m^3/s]
@@ -546,6 +562,9 @@ void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned s
 	double s_p = y_i->ve[2];	//[m]
 	double s_t = y_i->ve[3];	//[m]
 	double s_s = y_i->ve[4];	//[m]
+	//double s_precip = y_i->ve[5];	//[m]
+	//double V_r = y_i->ve[6];	//[m^3]
+	double q_b = y_i->ve[7];	//[m^3/s]
 
 	//Evaporation
 	double e_p,e_t,e_s;
@@ -583,22 +602,30 @@ void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned s
 	ans->ve[2] = rainfall - q_pl - q_pt - e_p;
 	ans->ve[3] = q_pt - q_ts - e_t;
 	ans->ve[4] = q_ts - q_sl - e_s;
+
+	//Additional states
+	ans->ve[5] = rainfall;
+	ans->ve[6] = q_pl;
+	ans->ve[7] = q_sl * A_h - q_b*60.0;
+	for(i=0;i<numparents;i++)
+		ans->ve[7] += y_p[i]->ve[7] * 60.0;
+	ans->ve[7] *= v_B/L_i;
 }
 
 //Type 262
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h,eta | invtau,c_1,c_2,k_3
-//The numbering is:	0   1   2   3   4  |    5    6   7   8
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,eta,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,k_2
+//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5
 void dam_TopLayerNonlinearExpSoilvel_ConstEta(VEC* y,VEC* global_params,VEC* params,QVSData* qvs,int state,VEC* ans)
 {
 	double q1,q2,S1,S2,S_max,q_max,S;
 
 	//Parameters
 	double lambda_1 = global_params->ve[1];
-	double invtau = params->ve[5];
+	double invtau = params->ve[10];
 
 	//Find the discharge in [m^3/s]
 	if(state == -1)
@@ -627,10 +654,10 @@ void dam_TopLayerNonlinearExpSoilvel_ConstEta(VEC* y,VEC* global_params,VEC* par
 //Type 262
 //Contains 2 states in the channel: dischage, storage
 //Contains 3 layers on hillslope: ponded, top layer, soil
-//Order of parameters: A_i,L_i,A_h,S_h,eta | invtau,c_1,c_2,k_2
-//The numbering is:	0   1   2   3   4  |    5    6   7   8
-//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-//The numbering is:        0      1        2     3   4   5     6   7  8  9
+//Order of parameters: A_i,L_i,A_h,S_h,T_L,eta,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,k_2
+//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
+//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+//The numbering is:        0      1        2    3  4   5
 void TopLayerNonlinearExpSoilvel_ConstEta_Reservoirs(double t,VEC* y_i,VEC** y_p,unsigned short int numparents,VEC* global_params,double* forcing_values,QVSData* qvs,VEC* params,IVEC* iparams,int state,unsigned int** upstream,unsigned int* numupstream,VEC* ans)
 {
 	ans->ve[0] = forcing_values[2];
@@ -638,6 +665,9 @@ void TopLayerNonlinearExpSoilvel_ConstEta_Reservoirs(double t,VEC* y_i,VEC** y_p
 	ans->ve[2] = 0.0;
 	ans->ve[3] = 0.0;
 	ans->ve[4] = 0.0;
+	ans->ve[5] = 0.0;
+	ans->ve[6] = 0.0;
+	ans->ve[7] = 0.0;
 }
 
 //Type 19

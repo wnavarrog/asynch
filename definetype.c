@@ -500,38 +500,38 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 				GlobalVars->num_forcings = 2;
 				break;
 //--------------------------------------------------------------------------------------------
-		case 261:	GlobalVars->dim = GlobalVars->problem_dim = 5;
+		case 261:	GlobalVars->dim = GlobalVars->problem_dim = 8;
 				GlobalVars->template_flag = 0;
 				GlobalVars->assim_flag = 0;
 				GlobalVars->diff_start = 1;
-				GlobalVars->no_ini_start = GlobalVars->dim;
-				num_global_params = 10;
+				GlobalVars->no_ini_start = 5;
+				num_global_params = 6;
 				GlobalVars->uses_dam = 1;
-				GlobalVars->params_size = 8;
+				GlobalVars->params_size = 13;
 				GlobalVars->iparams_size = 0;
 				GlobalVars->dam_params_size = 0;
 				GlobalVars->area_idx = 0;
 				GlobalVars->areah_idx = 2;
-				GlobalVars->disk_params = 4;
-				GlobalVars->num_dense = 1;
+				GlobalVars->disk_params = 9;
+				GlobalVars->num_dense = 2;
 				GlobalVars->convertarea_flag = 0;
 				GlobalVars->num_forcings = 4;
 				break;
 //--------------------------------------------------------------------------------------------
-		case 262:	GlobalVars->dim = GlobalVars->problem_dim = 5;
+		case 262:	GlobalVars->dim = GlobalVars->problem_dim = 8;
 				GlobalVars->template_flag = 0;
 				GlobalVars->assim_flag = 0;
 				GlobalVars->diff_start = 1;
-				GlobalVars->no_ini_start = GlobalVars->dim;
-				num_global_params = 10;
+				GlobalVars->no_ini_start = 5;
+				num_global_params = 5;
 				GlobalVars->uses_dam = 1;
-				GlobalVars->params_size = 9;
+				GlobalVars->params_size = 14;
 				GlobalVars->iparams_size = 0;
 				GlobalVars->dam_params_size = 0;
 				GlobalVars->area_idx = 0;
 				GlobalVars->areah_idx = 2;
-				GlobalVars->disk_params = 5;
-				GlobalVars->num_dense = 1;
+				GlobalVars->disk_params = 10;
+				GlobalVars->num_dense = 2;
 				GlobalVars->convertarea_flag = 0;
 				GlobalVars->num_forcings = 3;
 				break;
@@ -619,9 +619,14 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 	//Create the dense_indices list
 	//Note: If assim_flag is set, the variational eqs stuff is set outside here
 	GlobalVars->dense_indices = (unsigned int*) malloc(GlobalVars->num_dense * sizeof(unsigned int));
-	if(type == 21 || type == 22 || type == 23 || type == 40 || type == 261 || type == 262)
+	if(type == 21 || type == 22 || type == 23 || type == 40)
 	{
 		GlobalVars->dense_indices[0] = 1;	//Storage
+	}
+	else if(type == 261 || type == 262)
+	{
+		GlobalVars->dense_indices[0] = 1;	//Storage
+		GlobalVars->dense_indices[1] = 7;	//Baseflow
 	}
 	else if(type == 254)
 	{
@@ -1001,7 +1006,10 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 			link->f = &TopLayerNonlinearExpSoilvel_Reservoirs;
 			link->RKSolver = &ForcedSolutionSolver;
 		}
-		link->f = &TopLayerNonlinearExpSoilvel;
+		else
+		{
+			link->f = &TopLayerNonlinearExpSoilvel;
+		}
 		link->alg = &dam_TopLayerNonlinearExpSoilvel;
 		link->state_check = &dam_check_qvs;
 		link->CheckConsistency = &CheckConsistency_Nonzero_AllStates_q;
@@ -1013,7 +1021,10 @@ void InitRoutines(Link* link,unsigned int type,unsigned int exp_imp,unsigned sho
 			link->f = &TopLayerNonlinearExpSoilvel_ConstEta_Reservoirs;
 			link->RKSolver = &ForcedSolutionSolver;
 		}
-		link->f = &TopLayerNonlinearExpSoilvel_ConstEta;
+		else
+		{
+			link->f = &TopLayerNonlinearExpSoilvel_ConstEta;
+		}
 		link->alg = &dam_TopLayerNonlinearExpSoilvel_ConstEta;
 		link->state_check = &dam_check_qvs;
 		link->CheckConsistency = &CheckConsistency_Nonzero_AllStates_q;
@@ -1527,10 +1538,10 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 	}
 	else if(type == 261)
 	{
-		//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
-		//The numbering is:	0   1   2   3  |    4    5   6   7
-		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		//Order of parameters: A_i,L_i,A_h,S_h,T_L,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,c_3
+		//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
+		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+		//The numbering is:        0      1        2    3  4   5 
 		double* vals = params->ve;
 		double A_i = params->ve[0];
 		double L_i = params->ve[1];
@@ -1541,32 +1552,32 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		double lambda_1 = global_params->ve[1];
 		double lambda_2 = global_params->ve[2];
 
-		vals[4] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
-		vals[5] = (0.001/60.0);		//(mm/hr->m/min)  c_1
-		vals[6] = A_h/60.0;	//  c_2
-		vals[7] = pow(S_h,0.5)/L_i;	//c_3
+		vals[9] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
+		vals[10] = (0.001/60.0);		//(mm/hr->m/min)  c_1
+		vals[11] = A_h/60.0;	//  c_2
+		vals[12] = pow(S_h,0.5)/L_i;	//c_3
 	}
 	else if(type == 262)
 	{
-		//Order of parameters: A_i,L_i,A_h,S_h,eta | invtau,c_1,c_2,k_2
-		//The numbering is:	0   1   2   3   4  |    5    6   7   8
-		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		//Order of parameters: A_i,L_i,A_h,S_h,T_L,eta,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,k_2
+		//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
+		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+		//The numbering is:        0      1        2    3  4   5
 		double* vals = params->ve;
 		double A_i = params->ve[0];
 		double L_i = params->ve[1];
 		double A_h = params->ve[2];
 		double S_h = params->ve[3];
-		double eta = params->ve[4];
+		double eta = params->ve[5];
 
 		double v_0 = global_params->ve[0];
 		double lambda_1 = global_params->ve[1];
 		double lambda_2 = global_params->ve[2];
 
-		vals[5] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
-		vals[6] = (0.001/60.0);		//(mm/hr->m/min)  c_1
-		vals[7] = A_h/60.0;	//  c_2
-		vals[8] = pow(S_h,0.5)/(L_i*eta);	//k_2
+		vals[10] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
+		vals[11] = (0.001/60.0);		//(mm/hr->m/min)  c_1
+		vals[12] = A_h/60.0;	//  c_2
+		vals[13] = pow(S_h,0.5)/(L_i*eta);	//k_2
 	}
 	else if(type == 300 || type == 301)
 	{
@@ -1801,10 +1812,17 @@ params->ve[11] = 0.0;
 		//then the corresponding storage is moved into y_0[1]. When a dam is present, y_0[1] will have the storage.
 		//So the discharge can be calculated and stored into y_0[0].
 
-		//Order of parameters: A_i,L_i,A_h,S_h | invtau,c_1,c_2,c_3
-		//The numbering is:	0   1   2   3  |    4    5   6   7
-		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		//Order of parameters: A_i,L_i,A_h,S_h,T_L,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,c_3
+		//The numbering is:	0   1   2   3   4   5   6   7     8  |   9     10  11  12
+		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+		//The numbering is:        0      1        2    3  4   5 
+
+
+		//For this model, the extra states need to be set (5,6,7)
+		y_0->ve[5] = 0.0;
+		y_0->ve[6] = 0.0;
+		y_0->ve[7] = 0.0;	//I'm not really sure what to use here...
+
 		if(dam)
 		{
 			int state = dam_check_qvs(y_0,global_params,params,qvs,dam);
@@ -1814,7 +1832,7 @@ params->ve[11] = 0.0;
 		else
 		{
 			double lambda_1 = global_params->ve[1];
-			double tau_in_secs = 1.0/params->ve[4] * 60.0;
+			double tau_in_secs = 1.0/params->ve[9] * 60.0;
 			y_0->ve[0] = y_0->ve[1];
 			//y_0->ve[1] = pow(tau_in_secs*y_0->ve[0],1.0-lambda_1);
 			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
@@ -1827,10 +1845,16 @@ params->ve[11] = 0.0;
 		//then the corresponding storage is moved into y_0[1]. When a dam is present, y_0[1] will have the storage.
 		//So the discharge can be calculated and stored into y_0[0].
 
-		//Order of parameters: A_i,L_i,A_h,S_h,eta | invtau,c_1,c_2,k_2
-		//The numbering is:	0   1   2   3   4  |    5    6   7   8
-		//Order of global_params: v_0,lambda_1,lambda_2,h_b,k_D,k_dry,k_i,T_L,N,phi
-		//The numbering is:        0      1        2     3   4   5     6   7  8  9
+		//Order of parameters: A_i,L_i,A_h,S_h,T_L,eta,h_b,k_D,k_dry,k_i | invtau,c_1,c_2,k_2
+		//The numbering is:	0   1   2   3   4   5   6   7   8     9  |   10    11  12  13
+		//Order of global_params: v_0,lambda_1,lambda_2,N,phi,v_B
+		//The numbering is:        0      1        2    3  4   5
+
+		//For this model, the extra states need to be set (5,6,7)
+		y_0->ve[5] = 0.0;
+		y_0->ve[6] = 0.0;
+		y_0->ve[7] = 0.0;	//I'm not really sure what to use here...
+
 		if(dam)
 		{
 			int i;
@@ -1851,17 +1875,12 @@ params->ve[11] = 0.0;
 				y_0->ve[1] = (S2-S1)/(q2-q1) * (y_0->ve[0] - q1) + S1;
 			}
 			return i;
-
-			//int state = dam_check_qvs(y_0,global_params,params,qvs,dam);
-			//dam_TopLayerNonlinearExpSoilvel_ConstEta(y_0,global_params,params,qvs,state,y_0);
-			//return state;
 		}
 		else
 		{
 			double lambda_1 = global_params->ve[1];
-			double tau_in_secs = 1.0/params->ve[5] * 60.0;
+			double tau_in_secs = 1.0/params->ve[10] * 60.0;
 			y_0->ve[0] = y_0->ve[1];
-			//y_0->ve[1] = pow(tau_in_secs*y_0->ve[0],1.0-lambda_1);
 			y_0->ve[1] = tau_in_secs / (1.0-lambda_1) * pow(y_0->ve[0],1.0-lambda_1);
 			return -1;
 		}

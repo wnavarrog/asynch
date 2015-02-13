@@ -25,6 +25,7 @@ double Output_State3(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* ipar
 double Output_State4(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
 double Output_State5(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
 double Output_State6(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
+double Output_State7(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
 int Output_Time_Int(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
 //int Output_Linkid(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user);
 

@@ -50,6 +50,12 @@ void SetOutputFunctions(char* outputname,char* specifier,unsigned int num_print,
 		*output_type = ASYNCH_DOUBLE;
 		*output_d = &Output_State6;
 	}
+	else if(strcmp(outputname,"State7") == 0)
+	{
+		states_used[7] = 1;
+		*output_type = ASYNCH_DOUBLE;
+		*output_d = &Output_State7;
+	}
 	else if(strcmp(outputname,"TimeI") == 0)
 	{
 		*output_type = ASYNCH_INT;
@@ -189,6 +195,11 @@ double Output_State5(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* ipar
 double Output_State6(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
 {
 	return y_i->ve[6];
+}
+
+double Output_State7(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
+{
+	return y_i->ve[7];
 }
 
 int Output_Time_Int(double t,VEC* y_i,VEC* global_params,VEC* params,IVEC* iparams,int state,void* user)
