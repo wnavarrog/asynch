@@ -92,6 +92,7 @@ void Asynch_Load_System(asynchsolver* asynch)
 	}
 
 	//Put together the output filename string
+	//!!!! Does this do anything at all? !!!!
 	char filename[asynch->GlobalVars->string_size];
 	if(asynch->GlobalVars->print_par_flag == 1)
 	{
@@ -334,6 +335,10 @@ void Asynch_Prepare_Peakflow_Output(asynchsolver* asynch)
 //Return 0 means ok, -1 means no data to output
 int Asynch_Create_Output(asynchsolver* asynch,char* additional_out)
 {
+	//Flush the transfer buffers
+	//!!!! I'm really not sure if this should be here. Seems like either the sends in processdata should use a different tag, or the flush should unpack data instead of trashing it. !!!!
+	Flush_TransData(asynch->my_data);
+
 	if(asynch->GlobalVars->output_data->CreateOutput && asynch->GlobalVars->hydrosave_flag)
 		return asynch->GlobalVars->output_data->CreateOutput(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile));
 	return -1;
@@ -661,7 +666,8 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 	//Forcing** forcings = asynch->forcings;
 	UnivVars* GlobalVars = asynch->GlobalVars;
 
-	//Reset temp file
+	//Reset some things
+	Flush_TransData(asynch->my_data);
 	Asynch_Reset_Temp_Files(asynch,t_0);
 
 	//Reset links

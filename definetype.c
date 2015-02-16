@@ -523,7 +523,7 @@ void SetParamSizes(UnivVars* GlobalVars,void* external)
 				GlobalVars->assim_flag = 0;
 				GlobalVars->diff_start = 1;
 				GlobalVars->no_ini_start = 5;
-				num_global_params = 5;
+				num_global_params = 6;
 				GlobalVars->uses_dam = 1;
 				GlobalVars->params_size = 14;
 				GlobalVars->iparams_size = 0;
