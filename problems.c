@@ -590,7 +590,7 @@ void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned s
 	double q_sl = k_D * pers_to_permin * s_s;	//[m/min]
 
 	//Discharge
-	dam_TopLayerNonlinearExpSoilvel(y_i,global_params,params,qvs,state,ans);	//ans is used for convenience
+	dam_TopLayerNonlinearExpSoilvel_ConstEta(y_i,global_params,params,qvs,state,ans);	//ans is used for convenience
 	double qm = ans->ve[0] * 60.0;
 
 	//Storage
