@@ -2020,7 +2020,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	//Grab the output filename info
 	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->print_par_flag));
-	if(ReadLineError(valsread,1,"to print filename parameters"))	return NULL;
+	if(ReadLineError(valsread,1,"printing filename parameters"))	return NULL;
 
 	//Grab components to print
 	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
