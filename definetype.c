@@ -1555,7 +1555,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		vals[9] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[10] = (0.001/60.0);		//(mm/hr->m/min)  c_1
 		vals[11] = A_h/60.0;	//  c_2
-		vals[12] = pow(S_h,0.5)/L_i;	//c_3
+		vals[12] = pow(S_h,0.5)*L_i/A_h;	//c_3
 	}
 	else if(type == 262)
 	{
@@ -1577,7 +1577,7 @@ void Precalculations(Link* link_i,VEC* global_params,VEC* params,IVEC* iparams,u
 		vals[10] = 60.0*v_0*pow(A_i,lambda_2) / ((1.0-lambda_1)*L_i);	//[1/min]  invtau
 		vals[11] = (0.001/60.0);		//(mm/hr->m/min)  c_1
 		vals[12] = A_h/60.0;	//  c_2
-		vals[13] = pow(S_h,0.5)/(L_i*eta);	//k_2
+		vals[13] = pow(S_h,0.5)*L_i/(A_h*eta);	//k_2
 	}
 	else if(type == 300 || type == 301)
 	{
@@ -1726,7 +1726,7 @@ unsigned int ReadInitData(VEC* global_params,VEC* params,IVEC* iparams,QVSData* 
 	}
 	else if(type == 23)
 	{
-		//For type 22, only the storage (S or y_0->ve[1]) has been set.
+		//For type 23, only the storage (S or y_0->ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,RC,v_h,v_r,k2,k3,invtau,orifice_area,H_spill,H_max,S_max,alpha,orifice_diam,c_1,c_2,L_spill
 		//The numbering is:	0   1   2  3   4   5   6  7   8          9	  10	  11   12     13      14        15  16   17
 		//Order of global_params: lambda_1,lambda_2,S_0
@@ -1744,11 +1744,11 @@ unsigned int ReadInitData(VEC* global_params,VEC* params,IVEC* iparams,QVSData* 
 	}
 	else if(type == 40)
 	{
-		//For type 22, only the storage (S or y_0->ve[1]) has been set.
+		//For type 40, only the storage (S or y_0->ve[1]) has been set.
 		//Order of parameters: A_i,L_i,A_h,RC,v_h,v_r,k2,k3,invtau
 		//The numbering is:	0   1   2  3   4   5   6  7   8
-		//Order of global_params: lambda_1,lambda_2,S_0
-		//The numbering is:         0        1       2
+		//Order of global_params: lambda_1,lambda_2,S_0,v_g
+		//The numbering is:         0        1       2   3
 		double S_0 = global_params->ve[2];
 		double A_h = params->ve[2];
 		double RC = params->ve[3];

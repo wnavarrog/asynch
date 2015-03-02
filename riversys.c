@@ -935,6 +935,11 @@ getchar();
 				printf("[%i]: Error downloading init data. Got %i conditions, expected %u.\n",my_rank,PQntuples(res),*N);
 				MPI_Abort(MPI_COMM_WORLD,1);
 			}
+			if(PQnfields(res) != dim + 1)
+			{
+				printf("[%i]: Error downloading init data. Expected link id and %u states from initial condition data, but the query only gives %u columns.\n",my_rank,dim,PQnfields(res));
+				MPI_Abort(MPI_COMM_WORLD,1);
+			}
 
 			for(i=0;i<*N;i++)
 			{
@@ -1545,6 +1550,9 @@ getchar();
 			else if(GlobalVars->init_flag == 3)
 			{
 				v_copy(db_init_buffer[i],y_0);
+
+				if(system[i]->state_check != NULL)
+					system[i]->state = system[i]->state_check(y_0,GlobalVars->global_params,system[i]->params,system[i]->qvs,system[i]->dam);
 			}
 			else
 			{
@@ -2020,7 +2028,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	//Grab the output filename info
 	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->print_par_flag));
-	if(ReadLineError(valsread,1,"printing filename parameters"))	return NULL;
+	if(ReadLineError(valsread,1,"to print filename parameters"))	return NULL;
 
 	//Grab components to print
 	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
