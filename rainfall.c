@@ -29,6 +29,11 @@ int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 	FILE* stormdata = NULL;
 	unsigned int numfiles = last - first + 1;
 
+	//This is a time larger than any time in which the integrator is expected to get
+	double ceil_time = 1e300;
+	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+
 	//Check that space for rain data has been allocated.
 	if(sys[my_sys[0]]->forcing_buff[forcing_idx] == NULL)
 	{
@@ -94,7 +99,8 @@ int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 	for(i=0;i<my_N;i++)
 	{
 		curr_idx = sys[my_sys[i]]->location;
-		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = GlobalVars->maxtime + 1.0;
+		//sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = GlobalVars->maxtime + 1.0;
+		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = ceil_time;
 		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][1] = -1.0;
 	}
 
@@ -152,6 +158,11 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 	FILE* compfile = NULL;
 	unsigned int buffer_size = sizeof(unsigned int)+sizeof(float);
 	char transferbuffer[buffer_size];
+
+	//This is a time larger than any time in which the integrator is expected to get
+	double ceil_time = 1e300;
+	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
 
 	//Check that space for rain data has been allocated.
 	if(sys[my_sys[0]]->forcing_buff[forcing_idx] == NULL)
@@ -261,7 +272,8 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 	for(i=0;i<my_N;i++)
 	{
 		curr_idx = sys[my_sys[i]]->location;
-		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = GlobalVars->maxtime + 1.0;
+		//sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = GlobalVars->maxtime + 1.0;
+		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][0] = ceil_time;
 		sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[max_files][1] = -1.0;
 	}
 
@@ -323,7 +335,12 @@ int Create_Rain_Database(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 			sys[my_sys[i]]->forcing_buff[forcing_idx]->n_times = 1;
 		}
 	}
-	
+
+	//This is a time larger than any time in which the integrator is expected to get
+	double ceil_time = 1e300;
+	if(sys[my_sys[0]]->last_t > ceil_time*0.1)
+		printf("[%i]: Warning: integrator time is extremely large (about %e). Loss of precision may occur.\n",my_rank,sys[my_sys[i]]->last_t);
+
 /*
 	//!!!! Fix this (or don't?) !!!!
 	total_times = sys[my_sys[0]]->forcing_buff[forcing_idx]->n_times;
@@ -345,7 +362,9 @@ int Create_Rain_Database(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 //printf("*************************\n");
 //printf("First = %u Last = %u\n",first,last);
 //printf("*************************\n");
+//printf("Gmax = %e maxtime = %e\n",GlobalVars->maxtime,maxtime);
 //printf("query: %s\n",query);
+//printf("*************************\n");
 		res = PQexec(conninfo->conn,query);
 		CheckResError(res,"downloading rainfall data");
 		tuple_count = PQntuples(res);
@@ -470,14 +489,16 @@ printf("!!!! i = %i k = %i received = %i unix_time = %i raindb_start = %i\n",i,k
 		k = sys[curr_idx]->forcing_buff[forcing_idx]->n_times;
 		if(sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k-1][1] == 0.0)	//No rain, add just a ceiling
 		{
-			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][0] = maxtime * (1.1) + 1.0;
+			//sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][0] = maxtime * (1.1) + 1.0;
+			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][0] = ceil_time;
 			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][1] = -1.0;
 		}
 		else	//Add a 0.0, and a ceiling
 		{
 			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][0] = sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k-1][0] + forcing->file_time;
 			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k][1] = 0.0;
-			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k+1][0] = maxtime * (1.1) + 1.0;
+			//sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k+1][0] = maxtime * (1.1) + 1.0;
+			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k+1][0] = ceil_time;
 			sys[curr_idx]->forcing_buff[forcing_idx]->rainfall[k+1][1] = -1.0;
 		}
 	}
