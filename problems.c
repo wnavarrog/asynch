@@ -387,10 +387,10 @@ void TopLayerNonlinearExpSoilvel(double t,VEC* y_i,VEC** y_p,unsigned short int 
 	double A_h = params->ve[2];	//[m^2]
 	double S_h = params->ve[3];	//[]
 	double T_L = params->ve[4];	//[m]
-	double h_b = global_params->ve[5];	//[m]
-	double k_D = global_params->ve[6];	//[1/s]
-	double k_dry = global_params->ve[7];	//[1/s]
-	double k_i = global_params->ve[8];	//[1/s]
+	double h_b = params->ve[5];	//[m]
+	double k_D = params->ve[6];	//[1/s]
+	double k_dry = params->ve[7];	//[1/s]
+	double k_i = params->ve[8];	//[1/s]
 
 	//Precalculations
 	double invtau = params->ve[9];	//[1/min]
@@ -541,10 +541,10 @@ void TopLayerNonlinearExpSoilvel_ConstEta(double t,VEC* y_i,VEC** y_p,unsigned s
 	double S_h = params->ve[3];	//[]
 	double T_L = params->ve[4];	//[m]
 	double eta = params->ve[5];	//[]
-	double h_b = global_params->ve[6];	//[m]
-	double k_D = global_params->ve[7];	//[1/s]
-	double k_dry = global_params->ve[8];	//[1/s]
-	double k_i = global_params->ve[9];	//[1/s]
+	double h_b = params->ve[6];	//[m]
+	double k_D = params->ve[7];	//[1/s]
+	double k_dry = params->ve[8];	//[1/s]
+	double k_i = params->ve[9];	//[1/s]
 
 	//Precalculations
 	double invtau = params->ve[10];	//[1/min]
