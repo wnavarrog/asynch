@@ -28,6 +28,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 	unsigned int* my_steps_on_disk = (unsigned int*) malloc(2*my_save_size*sizeof(unsigned int));	//1st for id, 2nd for disk_iterations
 	unsigned int** steps_on_disk = NULL;
 	if(my_rank == 0)	steps_on_disk = (unsigned int**) malloc(np*sizeof(unsigned int*));
+	long long int jump_size;
 
 	//Close the temp file, if open
 	if(my_tempfile && *my_tempfile)
@@ -142,10 +143,12 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 			counter = 0;	//index of link in my_save_list of its process
 			fread(&id,sizeof(unsigned int),1,inputfile);
 			fread(&total_spaces,sizeof(unsigned int),1,inputfile);
+
 			while(id != save_list[i] && !feof(inputfile))
 			{
+				jump_size = (long long int) total_spaces * (long long int) line_size;	//Watch overflows!
 				//fseek(inputfile,total_spaces * dim * sizeof(double),SEEK_CUR);
-				fseek(inputfile,total_spaces * line_size,SEEK_CUR);
+				fseek(inputfile,jump_size,SEEK_CUR);
 				counter++;
 				fread(&id,sizeof(unsigned int),1,inputfile);
 				fread(&total_spaces,sizeof(unsigned int),1,inputfile);
@@ -1301,7 +1304,7 @@ int RemoveTemporaryFiles(UnivVars* GlobalVars,unsigned int my_save_size,char* ad
 }
 
 //Resets all temp files to the beginning of each link. This will allow all data in the temp files to be overwritten.
-//Returns 2 if there is an error, 1 if a warning, 0 if good.
+//Returns 2 if there is an error, 1 if a warning, 0 if good, -1 if no tempfile is open.
 int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc)
 {
 	unsigned int i,j,id;
@@ -1311,11 +1314,11 @@ int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,Univ
 	//If nothing to write, don't reset!
 	if(my_save_size == 0)	return 0;
 
-	//Make sure file is open
+	//Make sure file is open (this may not be an error necessarily)
 	if(!tempfile)
 	{
-		printf("[%i]: Error: Cannot reset temporary file. A temporary file is not open.\n",my_rank);
-		return 2;
+		//printf("[%i]: Error: Cannot reset temporary file. A temporary file is not open.\n",my_rank);
+		return -1;
 	}
 
 	//Restart the file
@@ -1351,7 +1354,7 @@ int ResetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,Univ
 
 //Sets all temp files to set_value. The set_value is in the component_idx spot. All data that has been stored later can be overwritten.
 //set_time is the time that is used for the next_save times.
-//Returns 2 if there is an error, 1 if a warning, 0 if good.
+//Returns 2 if there is an error, 1 if a warning, 0 if good, -1 if no file is open.
 int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned int component_idx,Link** sys,unsigned int N,FILE* tempfile,UnivVars* GlobalVars,unsigned int my_save_size,unsigned int** id_to_loc,data_types* dt_info)
 {
 	unsigned int i,j,k,id;
@@ -1365,8 +1368,8 @@ int SetTempFiles(double set_time,void* set_value,short int data_type,unsigned in
 
 	if(!tempfile)
 	{
-		printf("[%i]: Error: Cannot reset temporary file. A temporary file is not open.\n",my_rank);
-		return 2;
+		//printf("[%i]: Error: Cannot reset temporary file. A temporary file is not open.\n",my_rank);
+		return -1;
 	}
 
 	if(component_idx >= GlobalVars->num_print)
