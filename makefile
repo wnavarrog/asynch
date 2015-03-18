@@ -2,7 +2,7 @@
 PCC = mpicc
 
 #Flags C standard
-FLAGS = -std=gnu99
+FLAGS = -std=gnu99 -D_FILE_OFFSET_BITS=64
 
 #Flags for performance
 OPTFLAGS = -O3 -march=nocona
