@@ -1914,7 +1914,7 @@ getchar();
 				//peaksave_list[j] = peaksave_list[--(*peaksave_size)];
 				//j--;
 			}
-			else if((*assignments)[(*id_to_loc)[k][1]] == my_rank)
+			else if((*assignments)[k] == my_rank)
 			{
 				//my_peaksave_size++;
 				current = system[(*id_to_loc)[k][1]];
